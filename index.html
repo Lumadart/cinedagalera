@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cinema dos Amigos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="topo" hidden>
+    <a class="logo" href="#/catalogo">🎬 Cinema dos Amigos</a>
+    <nav>
+      <a href="#/catalogo" data-nav="catalogo">Catálogo</a>
+      <a href="#/sugerir" data-nav="sugerir">Sugerir</a>
+      <a href="#/amigos" data-nav="amigos">Amigos</a>
+      <a href="#/perfil" data-nav="perfil">Meu perfil</a>
+      <button id="sair" class="link">Sair</button>
+    </nav>
+  </header>
+
+  <main id="app"><p class="aviso">Carregando…</p></main>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-caixa" id="modal-conteudo"></div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
