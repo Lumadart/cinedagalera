@@ -3,22 +3,59 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101116">
   <title>Cinema dos Amigos</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header id="topo" hidden>
-    <a class="logo" href="#/catalogo">🎬 Cinema dos Amigos</a>
-    <nav>
-      <a href="#/catalogo" data-nav="catalogo">Catálogo</a>
-      <a href="#/sugerir" data-nav="sugerir">Sugerir</a>
-      <a href="#/amigos" data-nav="amigos">Amigos</a>
-      <a href="#/perfil" data-nav="perfil">Meu perfil</a>
-      <button id="sair" class="link">Sair</button>
-    </nav>
-  </header>
+  <div id="login-area" hidden></div>
 
-  <main id="app"><p class="aviso">Carregando…</p></main>
+  <div class="layout" id="layout" hidden>
+    <aside class="lateral">
+      <a class="logo" href="#/inicio" aria-label="Cinema dos Amigos">
+        <span class="logo-icone">🎬</span>
+        <span class="logo-texto">Cinema<br>dos Amigos</span>
+      </a>
+      <nav id="menu" aria-label="Principal">
+        <a href="#/inicio" data-nav="inicio">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+          <span>Início</span>
+        </a>
+        <a href="#/catalogo" data-nav="catalogo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span>Catálogo</span>
+        </a>
+        <a href="#/sugerir" data-nav="sugerir">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+          <span>Sugerir</span>
+        </a>
+        <a href="#/amigos" data-nav="amigos">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.2c2.6.3 4.5 2.2 4.5 5.3"/></svg>
+          <span>Amigos</span>
+        </a>
+        <a href="#/perfil" data-nav="perfil">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <span>Perfil</span>
+        </a>
+        <a href="#/admin" data-nav="admin" id="nav-admin" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+          <span>Admin</span>
+        </a>
+      </nav>
+    </aside>
+
+    <div class="coluna">
+      <header class="topo">
+        <label class="busca">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="busca-global" type="search" placeholder="Buscar filmes e séries…" autocomplete="off" aria-label="Buscar no catálogo">
+        </label>
+        <a class="chip-usuario" id="chip-usuario" href="#/perfil"></a>
+        <button id="sair" class="link" type="button">Sair</button>
+      </header>
+      <main id="app"></main>
+    </div>
+  </div>
 
   <div id="modal" class="modal" hidden>
     <div class="modal-caixa" id="modal-conteudo"></div>
