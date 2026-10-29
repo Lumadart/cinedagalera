@@ -1,4 +1,4 @@
-/* Cinema dos Amigos — front-end v2 */
+/* Cinema dos Amigos — front-end */
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) =>
@@ -9,6 +9,9 @@ const IMG_GRANDE = 'https://image.tmdb.org/t/p/w1280';
 const TMDB = 'https://api.themoviedb.org/3';
 const COR_PADRAO = '#E6B85C';
 const CORES = ['#E6B85C', '#FF6B81', '#4FD18B', '#5DA9FF', '#B38CFF', '#FF9A4D', '#4FD6D6', '#F1F1F4'];
+const LOTE = 48;
+const IDADE_MAX = 10 * 60 * 1000;
+const INTERVALO_CHECAGEM = 60 * 1000;
 
 const hexOk = (c) => /^#[0-9a-fA-F]{6}$/.test(String(c || ''));
 const pathOk = (p) => /^\/[\w.\-]+$/.test(String(p || ''));
@@ -17,7 +20,7 @@ const ler = (k) => { try { return localStorage.getItem(k); } catch (e) { return 
 const apagar = (k) => { try { localStorage.removeItem(k); } catch (e) { /* sem storage */ } };
 
 let DATA = { usuarios: [], admins: [], filmes: [], status: [] };
-let ME = null; // { nome, pin }
+let ME = null;
 try { ME = JSON.parse(ler('me') || 'null'); } catch (e) { ME = null; }
 
 let filtroTipo = '';
@@ -27,6 +30,10 @@ let filtroStatus = '';
 let sugerirTipo = 'filme';
 let perfilAba = 'vi';
 let destaqueId = null;
+let limite = LOTE;
+let bannerFechado = false;
+let ultimaChecagem = 0;
+let tBusca = null;
 
 /* ---------- Utilidades ---------- */
 
@@ -39,7 +46,6 @@ function toast(msg, erro = false) {
   toast.t = setTimeout(() => (t.hidden = true), 3200);
 }
 
-// Cada pessoa escolhe a sua cor de destaque; o fundo é sempre o mesmo.
 function aplicarCor(cor) {
   if (!hexOk(cor)) cor = COR_PADRAO;
   const r = parseInt(cor.slice(1, 3), 16);
@@ -52,17 +58,37 @@ function aplicarCor(cor) {
   guardar('cor', cor);
 }
 
+const fmtPin = (p) => String(p).replace(/(\d{3})(\d{3})/, '$1 $2');
+
+/* ---------- Dados e rede ---------- */
+
+function lerDados() {
+  try {
+    const c = JSON.parse(ler('dados') || 'null');
+    return c && c.d && Array.isArray(c.d.filmes) ? c : null;
+  } catch (e) { return null; }
+}
+function guardarDados(v, d) { guardar('dados', JSON.stringify({ v, t: Date.now(), d })); }
+
 async function carregar() {
-  const r = await fetch(CONFIG.API_URL);
-  const j = await r.json();
+  ultimaChecagem = Date.now();
+  const c = lerDados();
+  const recente = c && Date.now() - c.t < IDADE_MAX;
+  const j = await enviar('dados', { v: recente ? c.v : '' });
+  if (j.igual && c) {
+    DATA = c.d;
+    guardarDados(c.v, c.d);
+    return false;
+  }
   if (!j.filmes) throw new Error('Resposta inesperada do servidor.');
   DATA = j;
+  guardarDados(j.versao, j);
+  return true;
 }
 
 async function enviar(action, payload = {}) {
   const r = await fetch(CONFIG.API_URL, {
     method: 'POST',
-    // text/plain evita o "preflight" de CORS, que o Apps Script não suporta
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action, nome: ME?.nome, pin: ME?.pin, ...payload }),
   });
@@ -83,6 +109,8 @@ async function tmdb(caminho, params = {}) {
   if (!r.ok) throw new Error('Erro ao consultar o TMDB. Confira a chave no config.js.');
   return r.json();
 }
+
+/* ---------- Auxiliares de dados ---------- */
 
 const ehAdmin = () => !!ME && (DATA.admins || []).some((n) => String(n).toLowerCase() === ME.nome.toLowerCase());
 const ehSerie = (f) => f.tipo === 'serie';
@@ -152,28 +180,32 @@ function atualizarTopo() {
 
 function sair(expirou) {
   apagar('me');
+  apagar('dados');
   ME = null;
   fecharModal();
+  history.replaceState(null, '', '#/inicio');
   telaLogin();
   if (expirou) toast('Seu PIN foi alterado. Entre novamente.', true);
 }
 
-/* ---------- Login ---------- */
+/* ---------- Login e PIN ---------- */
 
 function telaLogin(modo = 'entrar') {
   mostrarLogin();
+  const novo = modo === 'cadastrar';
   $('#login-area').innerHTML = `
     <form class="caixa login" id="form-login">
       <h1>🎬 Cinema dos Amigos</h1>
       <div class="abas-pill">
-        <button type="button" class="chip ${modo === 'entrar' ? 'ativo' : ''}" data-modo="entrar">Entrar</button>
-        <button type="button" class="chip ${modo === 'cadastrar' ? 'ativo' : ''}" data-modo="cadastrar">Criar conta</button>
+        <button type="button" class="chip ${!novo ? 'ativo' : ''}" data-modo="entrar">Entrar</button>
+        <button type="button" class="chip ${novo ? 'ativo' : ''}" data-modo="cadastrar">Criar conta</button>
       </div>
       <input name="nome" placeholder="Seu nome" required autocomplete="username" maxlength="30">
-      <input name="pin" type="password" inputmode="numeric" placeholder="PIN (só números, mín. 4)" required autocomplete="current-password">
-      ${modo === 'cadastrar' ? '<input name="convite" placeholder="Código de convite" required>' : ''}
+      ${novo
+        ? '<input name="convite" placeholder="Código de convite" required autocomplete="off"><p class="suave" style="margin:0;font-size:.85rem">Seu PIN será gerado automaticamente.</p>'
+        : '<input name="pin" type="password" inputmode="numeric" placeholder="PIN (6 números)" required autocomplete="current-password">'}
       <div class="erro" id="erro-login"></div>
-      <button class="principal" type="submit">${modo === 'entrar' ? 'Entrar' : 'Criar conta'}</button>
+      <button class="principal" type="submit">${novo ? 'Criar conta' : 'Entrar'}</button>
     </form>`;
 
   $('#form-login').addEventListener('click', (e) => {
@@ -188,8 +220,14 @@ function telaLogin(modo = 'entrar') {
     btn.disabled = true;
     $('#erro-login').textContent = '';
     try {
-      ME = { nome: f.nome.trim(), pin: f.pin.trim() };
-      if (modo === 'cadastrar') await enviar('cadastrar', { convite: f.convite.trim() });
+      if (novo) {
+        ME = { nome: f.nome.trim(), pin: '' };
+        const r = await enviar('cadastrar', { convite: f.convite.trim() });
+        ME = { nome: r.nome, pin: r.pin };
+        telaPinNovo(r.pin);
+        return;
+      }
+      ME = { nome: f.nome.trim(), pin: f.pin.replace(/\s/g, '') };
       const r = await enviar('login');
       ME.nome = r.nome;
       guardar('me', JSON.stringify(ME));
@@ -200,6 +238,54 @@ function telaLogin(modo = 'entrar') {
       btn.disabled = false;
     }
   });
+}
+
+function telaPinNovo(pin) {
+  $('#login-area').innerHTML = `
+    <div class="caixa login">
+      <h1>Conta criada! 🎉</h1>
+      <p class="suave" style="margin:0">Este é o seu PIN. Anote agora: ele não será mostrado de novo.</p>
+      <div class="pin-grande">${fmtPin(pin)}</div>
+      <div class="acoes" style="margin:0">
+        <button type="button" data-copiar="${esc(pin)}">Copiar</button>
+        <button type="button" class="principal" id="pin-ok">Já anotei, entrar</button>
+      </div>
+    </div>`;
+  $('#pin-ok').addEventListener('click', async () => {
+    guardar('me', JSON.stringify(ME));
+    await iniciar();
+  });
+}
+
+function mostrarPinGerado(pin, quem) {
+  $('#modal-conteudo').innerHTML = `
+    <button class="fechar" data-fechar aria-label="Fechar">×</button>
+    <h2>Novo PIN${quem ? ' de ' + esc(quem) : ''}</h2>
+    <p class="suave">Anote agora: ele não será mostrado de novo.</p>
+    <div class="pin-grande">${fmtPin(pin)}</div>
+    <div class="acoes"><button class="principal" type="button" data-copiar="${esc(pin)}">Copiar</button></div>`;
+  $('#modal').hidden = false;
+}
+
+async function copiar(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    toast('Copiado!');
+  } catch (e) {
+    toast('Não consegui copiar. Selecione o número e copie.', true);
+  }
+}
+
+async function gerarNovoPin() {
+  if (!confirm('Gerar um novo PIN? O atual deixa de funcionar.')) return;
+  try {
+    const r = await enviar('novo_pin');
+    ME.pin = r.pin;
+    guardar('me', JSON.stringify(ME));
+    mostrarPinGerado(r.pin);
+    await carregar();
+    rota(true);
+  } catch (err) { toast(err.message, true); }
 }
 
 /* ---------- Início ---------- */
@@ -249,8 +335,16 @@ function viewInicio() {
     .sort((a, b) => mediaGrupo(b.tmdb_id) - mediaGrupo(a.tmdb_id))
     .slice(0, 14);
   const naoMarcados = recentes.filter((f) => !statusDe(ME.nome, f.tmdb_id)).slice(0, 14);
+  const eu = usuarioPorNome(ME.nome);
+  const aviso = eu && !eu.gerado && !bannerFechado ? `
+    <div class="caixa banner">
+      <span>🔐 Você escolheu o seu próprio PIN. Gere um PIN aleatório para não correr o risco de ter reaproveitado uma senha sua.</span>
+      <button type="button" class="principal" data-novo-pin>Gerar novo PIN</button>
+      <button type="button" class="link" data-fechar-banner>Agora não</button>
+    </div>` : '';
 
   $('#app').innerHTML = `
+    ${aviso}
     <section class="hero ${comFundo ? '' : 'sem-fundo'}" ${fundo ? `style="--bg-img:url('${esc(fundo)}')"` : ''}>
       <div class="hero-conteudo">
         <div class="hero-rotulo">EM DESTAQUE${quem ? ` · SUGERIDO POR ${esc(String(d.sugerido_por).toUpperCase())}` : ''}</div>
@@ -288,6 +382,7 @@ async function rapido(id, btn) {
 function viewCatalogo() {
   const todosGeneros = [...new Set(DATA.filmes.flatMap(generosDe))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const tipos = [['', 'Tudo'], ['filme', 'Filmes'], ['serie', 'Séries']];
+  limite = LOTE;
   $('#app').innerHTML = `
     <div class="titulo-pagina"><h1>Catálogo</h1><span class="contagem" id="contagem"></span></div>
     <div class="filtros">
@@ -306,7 +401,8 @@ function viewCatalogo() {
       <button class="chip ${filtroGenero === '' ? 'ativo' : ''}" data-genero="">Todos os gêneros</button>
       ${todosGeneros.map((g) => `<button class="chip ${filtroGenero === g ? 'ativo' : ''}" data-genero="${esc(g)}">${esc(g)}</button>`).join('')}
     </div>
-    <div class="grade" id="grade"></div>`;
+    <div class="grade" id="grade"></div>
+    <div class="mais" id="mais"></div>`;
 
   $('#tipos').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tipo]');
@@ -314,7 +410,7 @@ function viewCatalogo() {
     filtroTipo = b.dataset.tipo;
     viewCatalogo();
   });
-  $('#f-status').addEventListener('change', (e) => { filtroStatus = e.target.value; desenharGrade(); });
+  $('#f-status').addEventListener('change', (e) => { filtroStatus = e.target.value; limite = LOTE; desenharGrade(); });
   $('#chips').addEventListener('click', (e) => {
     const b = e.target.closest('[data-genero]');
     if (!b) return;
@@ -342,11 +438,13 @@ function desenharGrade() {
 
   $('#contagem').textContent = `${lista.length} ${lista.length === 1 ? 'título' : 'títulos'}`;
   grade.innerHTML = lista.length
-    ? lista.map((f) => cardFilme(f)).join('')
+    ? lista.slice(0, limite).map((f) => cardFilme(f)).join('')
     : '<p class="aviso" style="grid-column:1/-1">Nada por aqui. Que tal <a href="#/sugerir"><u>sugerir um título</u></a>?</p>';
+  $('#mais').innerHTML = lista.length > limite
+    ? `<button type="button" data-mais>Mostrar mais (${lista.length - limite})</button>` : '';
 }
 
-/* ---------- Modal do título ---------- */
+/* ---------- Janela do título ---------- */
 
 function abrirFilme(id) {
   const f = filmePorId(id);
@@ -569,18 +667,25 @@ function viewPerfil(nome) {
     <div class="abas" id="abas" style="--perfil:${corDe(u)}">
       ${abas.map(([k, t, n]) => `<button class="aba ${perfilAba === k ? 'ativo' : ''}" data-aba="${k}">${t} (${n})</button>`).join('')}
     </div>
-    <div id="perfil-lista"></div>`;
+    <div id="perfil-lista"></div>
+    <div class="mais" id="perfil-mais"></div>`;
 
+  let lim = LOTE;
   const desenhar = () => {
     let itens;
     if (perfilAba === 'sugeriu') itens = sugeridos.slice().reverse().map((f) => cardFilme(f, null));
     else {
       itens = meus.filter((s) => s.status === perfilAba).reverse()
-        .map((s) => { const f = filmePorId(s.tmdb_id); return f ? cardFilme(f, s) : ''; });
+        .map((s) => { const f = filmePorId(s.tmdb_id); return f ? cardFilme(f, s) : ''; })
+        .filter(Boolean);
     }
     $('#perfil-lista').innerHTML = itens.length
-      ? `<div class="grade">${itens.join('')}</div>`
+      ? `<div class="grade">${itens.slice(0, lim).join('')}</div>`
       : '<p class="vazio">Nada por aqui ainda.</p>';
+    $('#perfil-mais').innerHTML = itens.length > lim
+      ? `<button type="button" id="perfil-mais-btn">Mostrar mais (${itens.length - lim})</button>` : '';
+    const mais = $('#perfil-mais-btn');
+    if (mais) mais.addEventListener('click', () => { lim += LOTE; desenhar(); });
   };
   desenhar();
 
@@ -588,6 +693,7 @@ function viewPerfil(nome) {
     const b = e.target.closest('[data-aba]');
     if (!b) return;
     perfilAba = b.dataset.aba;
+    lim = LOTE;
     document.querySelectorAll('#abas .aba').forEach((x) => x.classList.toggle('ativo', x === b));
     desenhar();
   });
@@ -613,6 +719,7 @@ function abrirEditor(u) {
       <div class="acoes">
         <button class="principal" type="submit">Salvar</button>
         <button type="button" id="cancelar">Cancelar</button>
+        <button type="button" class="link" data-novo-pin>Gerar novo PIN</button>
       </div>
     </form>`;
 
@@ -621,7 +728,7 @@ function abrirEditor(u) {
     form.elements.cor.value = c;
     $('#cor-livre').value = c;
     document.querySelectorAll('.cor-bolinha').forEach((b) => b.classList.toggle('sel', b.dataset.cor.toLowerCase() === c.toLowerCase()));
-    aplicarCor(c); // prévia ao vivo
+    aplicarCor(c);
   };
   $('#cores').addEventListener('click', (e) => {
     const b = e.target.closest('[data-cor]');
@@ -654,11 +761,9 @@ async function viewAdmin() {
 
   $('#app').innerHTML = `
     <h1>Administração</h1>
-    <p class="suave">Tudo aqui também pode ser feito direto na planilha (aba <b>Config</b>). Para adicionar outro administrador, escreva o nome dele em “Administradores” na aba Config.</p>
     <div class="admin-grade">
       <section class="caixa">
         <h2>Código de convite</h2>
-        <p class="suave">Quem for criar conta precisa digitar este código.</p>
         <form class="linha-form" id="form-codigo">
           <input name="codigo" value="${esc(info.codigo)}" required minlength="3" aria-label="Código de convite">
           <button class="principal" type="submit">Salvar</button>
@@ -666,11 +771,10 @@ async function viewAdmin() {
       </section>
       <section class="caixa">
         <h2>Usuários</h2>
-        <p class="suave">Esqueceram o PIN? Defina um novo e avise a pessoa.</p>
         ${info.usuarios.map((n) => `
           <div class="linha-usuario">
             <span>${esc(n)}</span>
-            <button type="button" data-pin="${esc(n)}">Redefinir PIN</button>
+            <button type="button" data-pin="${esc(n)}">Gerar novo PIN</button>
           </div>`).join('')}
       </section>
     </div>`;
@@ -685,28 +789,30 @@ async function viewAdmin() {
 
   $('#app').querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', async () => {
     const alvo = b.dataset.pin;
-    const novo = prompt(`Novo PIN para ${alvo} (só números, mínimo 4):`);
-    if (!novo) return;
+    if (!confirm(`Gerar um novo PIN para ${alvo}? O atual deixa de funcionar.`)) return;
     try {
-      await enviar('admin_pin', { usuario: alvo, novo_pin: novo.trim() });
+      const r = await enviar('admin_pin', { usuario: alvo });
       if (alvo.toLowerCase() === ME.nome.toLowerCase()) {
-        ME.pin = novo.trim();
+        ME.pin = r.pin;
         guardar('me', JSON.stringify(ME));
       }
-      toast(`PIN de ${alvo} redefinido.`);
+      mostrarPinGerado(r.pin, r.usuario);
     } catch (err) { toast(err.message, true); }
   }));
 }
 
 /* ---------- Rotas ---------- */
 
-function rota(manterScroll) {
-  if (!ME) return;
+function paginaAtual() {
   const partes = (location.hash || '#/inicio').replace(/^#\/?/, '').split('/');
-  const pagina = partes[0] || 'inicio';
   let arg = '';
   try { arg = decodeURIComponent(partes.slice(1).join('/')); } catch (e) { arg = ''; }
+  return { pagina: partes[0] || 'inicio', arg };
+}
 
+function rota(manterScroll) {
+  if (!ME) return;
+  const { pagina, arg } = paginaAtual();
   const ativo = pagina === 'perfil' && arg && arg !== ME.nome ? 'amigos' : pagina;
   document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('ativo', a.dataset.nav === ativo));
 
@@ -719,31 +825,65 @@ function rota(manterScroll) {
   if (manterScroll !== true) window.scrollTo(0, 0);
 }
 
+function rerenderSeguro() {
+  const { pagina } = paginaAtual();
+  const ativo = document.activeElement;
+  const digitando = ativo && ativo.matches && ativo.matches('input, textarea, select');
+  const editando = $('#editor') && $('#editor').children.length > 0;
+  if (!$('#modal').hidden || digitando || editando || pagina === 'sugerir' || pagina === 'admin') return;
+  rota(true);
+}
+
 /* ---------- Início do app ---------- */
+
+function prepararUsuario() {
+  const eu = DATA.usuarios.find((u) => String(u.nome).toLowerCase() === ME.nome.toLowerCase());
+  if (!eu) return false;
+  ME.nome = eu.nome;
+  aplicarCor(eu.cor);
+  atualizarTopo();
+  return true;
+}
 
 async function iniciar() {
   if (!ME) return telaLogin();
   mostrarApp();
   if (CONFIG.API_URL.startsWith('COLE_AQUI')) {
-    $('#app').innerHTML = '<p class="aviso">Falta configurar o <b>config.js</b>. Siga o passo a passo do README.md.</p>';
+    $('#app').innerHTML = '<p class="aviso">Falta configurar o <b>config.js</b>.</p>';
     return;
   }
+
+  const c = lerDados();
+  if (c) {
+    DATA = c.d;
+    if (prepararUsuario()) {
+      rota();
+      carregar()
+        .then((mudou) => { if (mudou) { if (!prepararUsuario()) return sair(); rerenderSeguro(); } })
+        .catch(() => { /* sem rede: segue com o que já tem */ });
+      return;
+    }
+  }
+
   $('#app').innerHTML = '<p class="aviso">Carregando…</p>';
   try {
     await carregar();
   } catch (err) {
-    $('#app').innerHTML = '<p class="aviso">Não consegui carregar os dados. Confira a URL do Apps Script no config.js.</p>';
+    if (ME) $('#app').innerHTML = '<p class="aviso">Não consegui carregar os dados. Confira a URL do Apps Script no config.js.</p>';
     return;
   }
-  const eu = DATA.usuarios.find((u) => String(u.nome).toLowerCase() === ME.nome.toLowerCase());
-  if (!eu) { sair(); return; }
-  ME.nome = eu.nome;
-  aplicarCor(eu.cor);
-  atualizarTopo();
+  if (!prepararUsuario()) { sair(); return; }
   rota();
 }
 
 document.addEventListener('click', (e) => {
+  const cp = e.target.closest('[data-copiar]');
+  if (cp) return copiar(cp.dataset.copiar);
+
+  if (e.target.closest('[data-novo-pin]')) return gerarNovoPin();
+  if (e.target.closest('[data-fechar-banner]')) { bannerFechado = true; return rota(true); }
+  if (e.target.closest('[data-mais]')) { limite += LOTE; return desenharGrade(); }
+
   const q = e.target.closest('[data-rapido]');
   if (q) return rapido(q.dataset.rapido, q);
 
@@ -764,16 +904,24 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.matches?.('.filme[data-filme]')) abrirFilme(e.target.dataset.filme);
 });
 
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !ME || Date.now() - ultimaChecagem < INTERVALO_CHECAGEM) return;
+  carregar().then((mudou) => { if (mudou) rerenderSeguro(); }).catch(() => { /* sem rede */ });
+});
+
 window.addEventListener('hashchange', () => { fecharModal(); rota(); });
 
 $('#sair').addEventListener('click', () => sair());
 
 $('#busca-global').addEventListener('input', (e) => {
   filtroBusca = e.target.value;
-  if ((location.hash || '').startsWith('#/catalogo')) desenharGrade();
-  else location.hash = '#/catalogo';
+  clearTimeout(tBusca);
+  tBusca = setTimeout(() => {
+    limite = LOTE;
+    if ((location.hash || '').startsWith('#/catalogo')) desenharGrade();
+    else location.hash = '#/catalogo';
+  }, 160);
 });
 
-// Pinta a cor da última sessão já no primeiro frame, antes de carregar os dados
 aplicarCor(ler('cor'));
 iniciar();
