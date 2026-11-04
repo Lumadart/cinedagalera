@@ -1,927 +1,519 @@
-/* Cinema dos Amigos — front-end */
+/* Cinema dos Amigos — front v4 */
+const API_ESPERADA = 4;
+const PAGINA = 48;
+const STATUS = { vi: 'Vi', quero: 'Quero ver', assistindo: 'Assistindo' };
+const IMG = 'https://image.tmdb.org/t/p/';
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const $ = (s, el = document) => el.querySelector(s);
-const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const S = { nome: '', pin: '', admin: false, dados: null, agenda: null, filtro: { tipo: '', genero: '', status: '', q: '', ordem: 'recente', pag: 1 }, tmdb: [], erro: null };
 
-const IMG = 'https://image.tmdb.org/t/p/w342';
-const IMG_GRANDE = 'https://image.tmdb.org/t/p/w1280';
-const TMDB = 'https://api.themoviedb.org/3';
-const COR_PADRAO = '#E6B85C';
-const CORES = ['#E6B85C', '#FF6B81', '#4FD18B', '#5DA9FF', '#B38CFF', '#FF9A4D', '#4FD6D6', '#F1F1F4'];
-const LOTE = 48;
-const IDADE_MAX = 10 * 60 * 1000;
-const INTERVALO_CHECAGEM = 60 * 1000;
+/* ---------- Armazenamento ---------- */
+const ls = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* sem armazenamento */ } },
+};
 
-const hexOk = (c) => /^#[0-9a-fA-F]{6}$/.test(String(c || ''));
-const pathOk = (p) => /^\/[\w.\-]+$/.test(String(p || ''));
-const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sem storage */ } };
-const ler = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-const apagar = (k) => { try { localStorage.removeItem(k); } catch (e) { /* sem storage */ } };
+/* ---------- Erros ---------- */
+function mostrarErro(msg, detalhe) {
+  S.erro = msg + (detalhe ? '\n' + detalhe : '');
+  const p = $('#erro-painel');
+  p.hidden = false;
+  p.innerHTML = `${esc(msg)} <button class="btn sec peq" data-acao="copiar-erro">Copiar detalhes</button> <button class="btn sec peq" data-acao="fechar-erro">×</button>`;
+}
+window.addEventListener('error', (e) => mostrarErro('Erro no site: ' + e.message, (e.filename || '') + ':' + e.lineno));
+window.addEventListener('unhandledrejection', (e) => mostrarErro('Erro: ' + (e.reason && e.reason.message || e.reason)));
 
-let DATA = { usuarios: [], admins: [], filmes: [], status: [] };
-let ME = null;
-try { ME = JSON.parse(ler('me') || 'null'); } catch (e) { ME = null; }
-
-let filtroTipo = '';
-let filtroGenero = '';
-let filtroBusca = '';
-let filtroStatus = '';
-let sugerirTipo = 'filme';
-let perfilAba = 'vi';
-let destaqueId = null;
-let limite = LOTE;
-let bannerFechado = false;
-let ultimaChecagem = 0;
-let tBusca = null;
-
-/* ---------- Utilidades ---------- */
-
-function toast(msg, erro = false) {
+function toast(m) {
   const t = $('#toast');
-  t.textContent = msg;
-  t.className = 'toast' + (erro ? ' erro-t' : '');
-  t.hidden = false;
+  t.textContent = m; t.hidden = false;
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => (t.hidden = true), 3200);
+  toast.t = setTimeout(() => { t.hidden = true; }, 2600);
 }
 
-function aplicarCor(cor) {
-  if (!hexOk(cor)) cor = COR_PADRAO;
-  const r = parseInt(cor.slice(1, 3), 16);
-  const g = parseInt(cor.slice(3, 5), 16);
-  const b = parseInt(cor.slice(5, 7), 16);
-  const claro = (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6;
-  const css = document.documentElement.style;
-  css.setProperty('--destaque', cor);
-  css.setProperty('--sobre-destaque', claro ? '#101116' : '#ffffff');
-  guardar('cor', cor);
+/* ---------- API ---------- */
+function configOk() {
+  const c = window.CONFIG || {};
+  return /^https:\/\/script\.google\.com\//.test(c.API_URL || '');
 }
 
-const fmtPin = (p) => String(p).replace(/(\d{3})(\d{3})/, '$1 $2');
-
-/* ---------- Dados e rede ---------- */
-
-function lerDados() {
+async function chamar(action, extra, semLogin) {
+  if (!configOk()) throw new Error('config.js sem a URL do Apps Script.');
+  const corpo = Object.assign({ action }, semLogin ? {} : { nome: S.nome, pin: S.pin }, extra || {});
+  let res;
   try {
-    const c = JSON.parse(ler('dados') || 'null');
-    return c && c.d && Array.isArray(c.d.filmes) ? c : null;
-  } catch (e) { return null; }
-}
-function guardarDados(v, d) { guardar('dados', JSON.stringify({ v, t: Date.now(), d })); }
-
-async function carregar() {
-  ultimaChecagem = Date.now();
-  const c = lerDados();
-  const recente = c && Date.now() - c.t < IDADE_MAX;
-  const j = await enviar('dados', { v: recente ? c.v : '' });
-  if (j.igual && c) {
-    DATA = c.d;
-    guardarDados(c.v, c.d);
-    return false;
+    res = await fetch(window.CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(corpo) });
+  } catch (e) {
+    throw new Error('Sem conexão com o servidor (URL errada, implantação sem acesso "Qualquer pessoa" ou internet fora).');
   }
-  if (!j.filmes) throw new Error('Resposta inesperada do servidor.');
-  DATA = j;
-  guardarDados(j.versao, j);
-  return true;
-}
-
-async function enviar(action, payload = {}) {
-  const r = await fetch(CONFIG.API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, nome: ME?.nome, pin: ME?.pin, ...payload }),
-  });
-  const j = await r.json();
-  if (j.erro) {
-    if (/PIN incorretos/.test(j.erro) && ME && action !== 'login' && action !== 'cadastrar') {
-      sair(true);
-      throw new Error('Seu PIN foi alterado. Entre novamente.');
-    }
-    throw new Error(j.erro);
+  let r;
+  try { r = await res.json(); } catch (e) {
+    throw new Error('O servidor não respondeu JSON. Confira se a implantação do Apps Script está com acesso "Qualquer pessoa".');
   }
-  return j;
+  if (r.api !== API_ESPERADA) throw new Error('Versão do servidor (' + (r.api || 'antiga') + ') diferente do site (' + API_ESPERADA + '). Atualize o Code.gs e publique uma nova versão da implantação.');
+  if (r.erro) {
+    if (!semLogin && S.dados && /Nome ou PIN incorretos/.test(r.erro)) { sair(true); throw new Error('Seu PIN foi alterado. Entre novamente.'); }
+    throw new Error(r.erro);
+  }
+  return r;
 }
 
-async function tmdb(caminho, params = {}) {
-  const qs = new URLSearchParams({ api_key: CONFIG.TMDB_KEY, language: 'pt-BR', ...params });
-  const r = await fetch(`${TMDB}${caminho}?${qs}`);
-  if (!r.ok) throw new Error('Erro ao consultar o TMDB. Confira a chave no config.js.');
-  return r.json();
+async function carregarDados() {
+  const c = ls.get('cda_dados');
+  const r = await chamar('dados', { v: c && c.versao });
+  if (r.igual) S.dados = c;
+  else { S.dados = r.d; ls.set('cda_dados', r.d); }
+  S.semana = r.semana;
+  indexar();
 }
 
-/* ---------- Auxiliares de dados ---------- */
-
-const ehAdmin = () => !!ME && (DATA.admins || []).some((n) => String(n).toLowerCase() === ME.nome.toLowerCase());
-const ehSerie = (f) => f.tipo === 'serie';
-const statusDe = (usuario, id) =>
-  DATA.status.find((s) => s.usuario === usuario && String(s.tmdb_id) === String(id));
-const filmePorId = (id) => DATA.filmes.find((f) => String(f.tmdb_id) === String(id));
-const generosDe = (f) => String(f.generos || '').split(', ').filter(Boolean);
-const usuarioPorNome = (n) => DATA.usuarios.find((u) => u.nome === n);
-const corDe = (u) => (u && hexOk(u.cor) ? u.cor : COR_PADRAO);
-
-function notasDe(id) {
-  return DATA.status
-    .filter((s) => String(s.tmdb_id) === String(id) && s.status === 'vi' && s.nota !== '' && s.nota != null && !isNaN(Number(s.nota)))
-    .map((s) => Number(s.nota));
-}
-function mediaGrupo(id) {
-  const n = notasDe(id);
-  return n.length ? n.reduce((a, b) => a + b, 0) / n.length : null;
+async function carregarAgenda() {
+  const r = await chamar('agenda', { v: S.agenda && S.agenda.versao });
+  if (!r.igual) S.agenda = r;
 }
 
-function rotuloStatus(s) {
-  if (s.status === 'vi') return '✓ Vi' + (s.nota !== '' && s.nota != null ? ' · ' + s.nota : '');
-  if (s.status === 'assistindo') return '▶ Assistindo';
-  return '★ Quero ver';
+function indexar() {
+  S.porChave = {};
+  S.dados.titulos.forEach((t) => { S.porChave[t.chave] = t; });
+  S.porUsuario = {};
+  S.dados.usuarios.forEach((u) => { S.porUsuario[u.nome] = u; });
+  S.marcas = {};
+  S.dados.marcacoes.forEach((m) => { (S.marcas[m.chave] = S.marcas[m.chave] || []).push(m); });
 }
 
-function posterHtml(f) {
-  return pathOk(f.poster)
-    ? `<img src="${IMG}${esc(f.poster)}" alt="Pôster de ${esc(f.titulo)}" loading="lazy">`
-    : '<div class="sem-poster">🎞️</div>';
+async function atualizar(tudo) {
+  await carregarDados();
+  if (tudo !== 'dados') await carregarAgenda();
+  render();
 }
 
-function cardFilme(f, s = statusDe(ME.nome, f.tmdb_id)) {
-  const media = mediaGrupo(f.tmdb_id);
-  const selo = s ? `<span class="selo ${esc(s.status)}">${esc(rotuloStatus(s))}</span>` : '';
-  const generos = generosDe(f).slice(0, 2).join(', ');
-  return `
-    <div class="filme" data-filme="${esc(f.tmdb_id)}" tabindex="0" role="button" aria-label="${esc(f.titulo)}">
-      <div class="capa">
-        ${posterHtml(f)}
-        ${ehSerie(f) ? '<span class="tag-tipo">Série</span>' : ''}
-        ${media !== null ? `<span class="nota-grupo">★ ${media.toFixed(1)}</span>` : ''}
-      </div>
-      <div class="info">
-        <div class="titulo">${esc(f.titulo)}</div>
-        <div class="meta">${esc(f.ano)}${generos ? ' · ' + esc(generos) : ''}</div>
-        ${selo}
-      </div>
-    </div>`;
+/* ---------- Sessão ---------- */
+function aplicarCor(cor) {
+  const c = /^#[0-9a-fA-F]{6}$/.test(cor || '') ? cor : '#e6b85c';
+  const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
+  document.documentElement.style.setProperty('--destaque', c);
+  document.documentElement.style.setProperty('--sobre-destaque', (r * 299 + g * 587 + b * 114) / 1000 > 140 ? '#101116' : '#ffffff');
 }
 
-function mostrarLogin() {
-  $('#layout').hidden = true;
-  $('#login-area').hidden = false;
-}
-function mostrarApp() {
-  $('#login-area').hidden = true;
-  $('#layout').hidden = false;
-}
-
-function atualizarTopo() {
-  const u = usuarioPorNome(ME.nome);
-  $('#chip-usuario').innerHTML =
-    `<span class="mini-avatar">${esc(u?.avatar || '🎬')}</span><span class="nome-usuario">${esc(ME.nome)}</span>`;
-  $('#nav-admin').hidden = !ehAdmin();
-}
-
-function sair(expirou) {
-  apagar('me');
-  apagar('dados');
-  ME = null;
+function sair(silencioso) {
+  S.nome = ''; S.pin = ''; S.admin = false; S.dados = null; S.agenda = null;
+  ls.del('cda_sessao'); ls.del('cda_dados');
   fecharModal();
   history.replaceState(null, '', '#/inicio');
-  telaLogin();
-  if (expirou) toast('Seu PIN foi alterado. Entre novamente.', true);
+  aplicarCor();
+  if (!silencioso) toast('Você saiu.');
+  render();
 }
 
-/* ---------- Login e PIN ---------- */
+async function entrar(nome, pin) {
+  S.nome = nome; S.pin = pin;
+  try {
+    const r = await chamar('login');
+    S.admin = r.admin;
+    ls.set('cda_sessao', { nome, pin });
+    await atualizar();
+    const eu = S.porUsuario[S.nome];
+    if (eu) aplicarCor(eu.cor);
+    render();
+  } catch (e) { S.nome = ''; S.pin = ''; throw e; }
+}
 
-function telaLogin(modo = 'entrar') {
-  mostrarLogin();
-  const novo = modo === 'cadastrar';
-  $('#login-area').innerHTML = `
-    <form class="caixa login" id="form-login">
-      <h1>🎬 Cinema dos Amigos</h1>
-      <div class="abas-pill">
-        <button type="button" class="chip ${!novo ? 'ativo' : ''}" data-modo="entrar">Entrar</button>
-        <button type="button" class="chip ${novo ? 'ativo' : ''}" data-modo="cadastrar">Criar conta</button>
-      </div>
-      <input name="nome" placeholder="Seu nome" required autocomplete="username" maxlength="30">
-      ${novo
-        ? '<input name="convite" placeholder="Código de convite" required autocomplete="off"><p class="suave" style="margin:0;font-size:.85rem">Seu PIN será gerado automaticamente.</p>'
-        : '<input name="pin" type="password" inputmode="numeric" placeholder="PIN (6 números)" required autocomplete="current-password">'}
-      <div class="erro" id="erro-login"></div>
-      <button class="principal" type="submit">${novo ? 'Criar conta' : 'Entrar'}</button>
-    </form>`;
+/* ---------- Modal ---------- */
+function abrirModal(html) { $('#caixa').innerHTML = html; $('#modal').hidden = false; }
+function fecharModal() { $('#modal').hidden = true; $('#caixa').innerHTML = ''; }
 
-  $('#form-login').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-modo]');
-    if (b) telaLogin(b.dataset.modo);
-  });
+/* ---------- Auxiliares de dados ---------- */
+function posterHtml(t, selo) {
+  const img = t.poster ? `<img loading="lazy" src="${IMG}w342${esc(t.poster)}" alt="">` : `<div class="sem">${esc(t.titulo)}</div>`;
+  return `<div class="poster" data-acao="titulo" data-chave="${esc(t.chave)}">${selo ? `<span class="selo">${esc(selo)}</span>` : ''}${img}<div class="info"><b>${esc(t.titulo)}</b><span class="mudo">${esc(t.ano)} · ${t.tipo === 'serie' ? 'Série' : 'Filme'}</span></div></div>`;
+}
 
-  $('#form-login').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = Object.fromEntries(new FormData(e.target));
-    const btn = e.target.querySelector('button[type=submit]');
-    btn.disabled = true;
-    $('#erro-login').textContent = '';
+function minhaMarca(chave, nome) {
+  return (S.marcas[chave] || []).find((m) => m.usuario === (nome || S.nome));
+}
+
+function contagem(status) {
+  const n = {};
+  S.dados.marcacoes.forEach((m) => { if (m.status === status) n[m.chave] = (n[m.chave] || 0) + 1; });
+  return Object.keys(n).sort((a, b) => n[b] - n[a]).filter((k) => S.porChave[k]).map((k) => ({ t: S.porChave[k], n: n[k] }));
+}
+
+function generosDe(lista) {
+  const n = {};
+  lista.forEach((t) => String(t.generos || '').split(',').map((g) => g.trim()).filter(Boolean).forEach((g) => { n[g] = (n[g] || 0) + 1; }));
+  return Object.keys(n).sort((a, b) => n[b] - n[a]);
+}
+
+function avatarHtml(u, grande) {
+  return `<div class="avatar${grande ? ' g' : ''}">${esc(u && u.avatar || '🎬')}</div>`;
+}
+
+function dataBr(d) {
+  const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : esc(d);
+}
+
+function hoje() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* ---------- Páginas ---------- */
+function paginaLogin(modo) {
+  const cad = modo === 'cadastro';
+  return `<div class="card centro"><h1>🎬 Cinema dos Amigos</h1>
+  <form id="f-login"><label>Nome de usuário</label><input id="l-nome" autocomplete="username" required>
+  ${cad ? '<label>Código de convite</label><input id="l-convite" required>' : '<label>PIN (6 dígitos)</label><input id="l-pin" inputmode="numeric" autocomplete="current-password" required>'}
+  <p class="mudo pequeno">${cad ? 'O PIN é gerado pelo sistema e aparece uma única vez.' : ''}</p>
+  <button class="btn" style="width:100%">${cad ? 'Criar conta' : 'Entrar'}</button></form>
+  <p class="pequeno"><a href="#/${cad ? 'inicio' : 'cadastro'}" style="color:var(--destaque)">${cad ? 'Já tenho conta' : 'Tenho um código de convite'}</a> · <a href="#/diag" style="color:var(--mudo)">Diagnóstico</a></p></div>`;
+}
+
+async function paginaDiag() {
+  const itens = [];
+  const add = (ok, m) => itens.push(`<li class="${ok ? 'ok' : 'nok'}">${ok ? '✔' : '✖'} ${esc(m)}</li>`);
+  add(!!document.querySelector('meta[name=versao]'), 'Site carregado (versão ' + (document.querySelector('meta[name=versao]') || {}).content + ')');
+  add(getComputedStyle(document.documentElement).getPropertyValue('--versao').trim() === '4', 'style.css na versão certa');
+  add(configOk(), 'config.js com URL do Apps Script');
+  add(!!(window.CONFIG && /^[0-9a-f]{32}$/i.test(window.CONFIG.TMDB_KEY || '')), 'config.js com chave do TMDB');
+  if (configOk()) {
     try {
-      if (novo) {
-        ME = { nome: f.nome.trim(), pin: '' };
-        const r = await enviar('cadastrar', { convite: f.convite.trim() });
-        ME = { nome: r.nome, pin: r.pin };
-        telaPinNovo(r.pin);
-        return;
-      }
-      ME = { nome: f.nome.trim(), pin: f.pin.replace(/\s/g, '') };
-      const r = await enviar('login');
-      ME.nome = r.nome;
-      guardar('me', JSON.stringify(ME));
-      await iniciar();
-    } catch (err) {
-      ME = null;
-      $('#erro-login').textContent = err.message;
-      btn.disabled = false;
-    }
-  });
-}
-
-function telaPinNovo(pin) {
-  $('#login-area').innerHTML = `
-    <div class="caixa login">
-      <h1>Conta criada! 🎉</h1>
-      <p class="suave" style="margin:0">Este é o seu PIN. Anote agora: ele não será mostrado de novo.</p>
-      <div class="pin-grande">${fmtPin(pin)}</div>
-      <div class="acoes" style="margin:0">
-        <button type="button" data-copiar="${esc(pin)}">Copiar</button>
-        <button type="button" class="principal" id="pin-ok">Já anotei, entrar</button>
-      </div>
-    </div>`;
-  $('#pin-ok').addEventListener('click', async () => {
-    guardar('me', JSON.stringify(ME));
-    await iniciar();
-  });
-}
-
-function mostrarPinGerado(pin, quem) {
-  $('#modal-conteudo').innerHTML = `
-    <button class="fechar" data-fechar aria-label="Fechar">×</button>
-    <h2>Novo PIN${quem ? ' de ' + esc(quem) : ''}</h2>
-    <p class="suave">Anote agora: ele não será mostrado de novo.</p>
-    <div class="pin-grande">${fmtPin(pin)}</div>
-    <div class="acoes"><button class="principal" type="button" data-copiar="${esc(pin)}">Copiar</button></div>`;
-  $('#modal').hidden = false;
-}
-
-async function copiar(texto) {
-  try {
-    await navigator.clipboard.writeText(texto);
-    toast('Copiado!');
-  } catch (e) {
-    toast('Não consegui copiar. Selecione o número e copie.', true);
+      const r = await (await fetch(window.CONFIG.API_URL)).json();
+      add(r.api === API_ESPERADA, 'Servidor respondeu (versão da API: ' + r.api + (r.api === API_ESPERADA ? ')' : ', esperado ' + API_ESPERADA + ' — publique uma nova versão da implantação)'));
+    } catch (e) { add(false, 'Servidor não respondeu: confira a URL e o acesso "Qualquer pessoa".'); }
   }
+  return `<div class="card centro" style="max-width:640px"><h2>Diagnóstico</h2><ul class="diag">${itens.join('')}</ul><a class="btn sec" href="#/inicio">Voltar</a></div>`;
 }
 
-async function gerarNovoPin() {
-  if (!confirm('Gerar um novo PIN? O atual deixa de funcionar.')) return;
-  try {
-    const r = await enviar('novo_pin');
-    ME.pin = r.pin;
-    guardar('me', JSON.stringify(ME));
-    mostrarPinGerado(r.pin);
-    await carregar();
-    rota(true);
-  } catch (err) { toast(err.message, true); }
+function paginaInicio() {
+  const D = S.dados;
+  const vistos = D.marcacoes.filter((m) => m.usuario === S.nome && m.status === 'vi').length;
+  const querem = contagem('quero').slice(0, 12), vistosTop = contagem('vi').slice(0, 12);
+  const assistindo = D.marcacoes.filter((m) => m.usuario === S.nome && m.status === 'assistindo' && S.porChave[m.chave]);
+  const recentes = D.titulos.slice().reverse().slice(0, 12);
+  const futuras = ((S.agenda && S.agenda.programacao) || []).filter((s) => s.data >= hoje()).sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora)).slice(0, 3);
+  const abertas = ((S.agenda && S.agenda.votacoes) || []).filter((v) => v.status === 'aberta');
+  const bloco = (t, l) => l.length ? `<h2>${t}</h2><div class="grade">${l.join('')}</div><br>` : '';
+  return `<div class="hero"><div class="num"><b>${D.titulos.length}</b>títulos</div><div class="num"><b>${D.usuarios.length}</b>amigos</div><div class="num"><b>${vistos}</b>vistos por você</div><div class="num"><b>${abertas.length}</b>votações abertas</div></div><br>
+  ${futuras.length ? `<div class="card"><h2>Próximas sessões</h2>${futuras.map(sessaoHtml).join('')}</div>` : ''}
+  ${abertas.length ? `<div class="card"><a href="#/agenda" style="color:var(--destaque)">🗳️ ${abertas.length} votação(ões) aberta(s) — vote agora</a></div>` : ''}
+  ${bloco('Você está assistindo', assistindo.map((m) => posterHtml(S.porChave[m.chave], m.temporada ? `T${m.temporada}E${m.episodio || 0}` : '')))}
+  ${bloco('Mais marcados para ver', querem.map((x) => posterHtml(x.t, x.n + '×')))}
+  ${bloco('Mais vistos', vistosTop.map((x) => posterHtml(x.t, x.n + '×')))}
+  ${bloco('Adicionados recentemente', recentes.map((t) => posterHtml(t)))}
+  ${D.titulos.length ? '' : '<div class="card">O catálogo está vazio. Clique em “＋ Sugerir” para adicionar o primeiro título.</div>'}`;
 }
 
-/* ---------- Início ---------- */
-
-function fila(titulo, itens, vazio, link) {
-  return `
-    <section class="secao">
-      <div class="secao-topo"><h2>${titulo}</h2>${link ? `<a href="${link}">Ver todos →</a>` : ''}</div>
-      ${itens.length ? `<div class="fila">${itens.map((f) => cardFilme(f)).join('')}</div>` : `<p class="vazio">${vazio}</p>`}
-    </section>`;
+function paginaCatalogo() {
+  const f = S.filtro, D = S.dados;
+  const generos = generosDe(D.titulos);
+  let l = D.titulos.filter((t) => {
+    if (f.tipo && t.tipo !== f.tipo) return false;
+    if (f.genero && String(t.generos).split(',').map((g) => g.trim()).indexOf(f.genero) < 0) return false;
+    if (f.status) { const m = minhaMarca(t.chave); if (f.status === 'nenhum' ? m : !m || m.status !== f.status) return false; }
+    if (f.q && String(t.titulo).toLowerCase().indexOf(f.q.toLowerCase()) < 0) return false;
+    return true;
+  });
+  if (f.ordem === 'az') l.sort((a, b) => String(a.titulo).localeCompare(String(b.titulo)));
+  else if (f.ordem === 'ano') l.sort((a, b) => Number(b.ano) - Number(a.ano));
+  else l.reverse();
+  const vis = l.slice(0, f.pag * PAGINA);
+  const sel = (id, ops, v) => `<select id="${id}">${ops.map((o) => `<option value="${esc(o[0])}"${o[0] === v ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
+  return `<div class="card linha"><input id="c-q" placeholder="Buscar no catálogo" value="${esc(f.q)}">
+  ${sel('c-tipo', [['', 'Tudo'], ['filme', 'Filmes'], ['serie', 'Séries']], f.tipo)}
+  ${sel('c-genero', [['', 'Gêneros']].concat(generos.map((g) => [g, g])), f.genero)}
+  ${sel('c-status', [['', 'Qualquer status'], ['vi', 'Vi'], ['quero', 'Quero ver'], ['assistindo', 'Assistindo'], ['nenhum', 'Sem marcação']], f.status)}
+  ${sel('c-ordem', [['recente', 'Recentes'], ['az', 'A–Z'], ['ano', 'Ano']], f.ordem)}</div>
+  <p class="mudo pequeno">${l.length} título(s)</p>
+  <div class="grade">${vis.map((t) => { const m = minhaMarca(t.chave); return posterHtml(t, m ? STATUS[m.status] : ''); }).join('')}</div>
+  ${vis.length < l.length ? '<p style="text-align:center"><button class="btn sec" data-acao="mais">Mostrar mais</button></p>' : ''}`;
 }
 
-function viewInicio() {
-  const recentes = DATA.filmes.slice().reverse();
-  if (!recentes.length) {
-    $('#app').innerHTML = `
-      <div class="caixa boas-vindas">
-        <div class="grande">🍿</div>
-        <h1>O catálogo ainda está vazio</h1>
-        <p class="vazio">Seja o primeiro a sugerir um filme ou uma série para o grupo.</p>
-        <p><a href="#/sugerir"><button class="principal" type="button">Sugerir o primeiro</button></a></p>
-      </div>`;
+function sessaoHtml(s) {
+  const t = S.porChave[s.chave];
+  return `<div class="cand">${t && t.poster ? `<img src="${IMG}w92${esc(t.poster)}" alt="">` : ''}<div class="corpo"><b>${esc(t ? t.titulo : s.rotulo)}</b>${t && s.rotulo ? ' — ' + esc(s.rotulo) : ''}<div class="mudo pequeno">${dataBr(s.data)} às ${esc(s.hora)}${s.local ? ' · ' + esc(s.local) : ''}</div></div>${S.admin ? `<button class="btn perigo peq" data-acao="sessao-apagar" data-id="${esc(s.id)}">Apagar</button>` : ''}</div>`;
+}
+
+function votacaoHtml(v) {
+  const aberta = v.status === 'aberta';
+  const total = v.votos ? v.votos.length : 0;
+  const cont = {};
+  (v.votos || []).forEach((x) => { cont[x.chave] = (cont[x.chave] || 0) + 1; });
+  const linhas = v.candidatos.map((k) => {
+    const t = S.porChave[k]; if (!t) return '';
+    const n = cont[k] || 0;
+    const pct = total ? Math.round(n * 100 / total) : 0;
+    const tipo = v.max_votos > 1 ? 'checkbox' : 'radio';
+    return `<div class="cand">${aberta ? `<input type="${tipo}" name="v-${esc(v.id)}" value="${esc(k)}"${v.meus.indexOf(k) >= 0 ? ' checked' : ''}>` : ''}${t.poster ? `<img src="${IMG}w92${esc(t.poster)}" alt="">` : ''}<div class="corpo"><b>${esc(t.titulo)}</b>${v.vencedor === k ? ' 🏆' : ''}${v.votos ? `<div class="barra"><i style="width:${pct}%"></i></div>` : ''}</div>${v.votos ? `<span class="mudo">${n}</span>` : ''}</div>`;
+  }).join('');
+  return `<div class="card" data-voto="${esc(v.id)}"><h3>${esc(v.titulo)} ${aberta ? '' : '<span class="tag">encerrada</span>'}</h3>
+  <p class="mudo pequeno">${aberta ? `Até ${v.max_votos} voto(s)${v.prazo ? ' · prazo ' + dataBr(v.prazo) : ''}${v.ocultar ? ' · resultado oculto até encerrar' : ''} · ${v.votaram.length} pessoa(s) votaram` : 'Encerrada'}</p>
+  ${linhas}
+  ${aberta ? `<div class="linha" style="margin-top:10px"><button class="btn" data-acao="votar" data-id="${esc(v.id)}">Salvar meu voto</button>${S.admin ? `<button class="btn sec" data-acao="voto-encerrar" data-id="${esc(v.id)}">Encerrar</button>` : ''}</div>` : ''}
+  ${S.admin && !aberta ? `<button class="btn perigo peq" data-acao="voto-apagar" data-id="${esc(v.id)}">Apagar</button>` : ''}</div>`;
+}
+
+function paginaAgenda() {
+  const A = S.agenda || { votacoes: [], programacao: [] };
+  const futuras = A.programacao.filter((s) => s.data >= hoje()).sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+  return `<h2>Programação</h2><div class="card">${futuras.length ? futuras.map(sessaoHtml).join('') : '<span class="mudo">Nenhuma sessão marcada.</span>'}
+  ${S.admin ? '<p><button class="btn" data-acao="sessao-nova">＋ Nova sessão</button></p>' : ''}</div>
+  <h2>Votações</h2>${S.admin ? '<p><button class="btn" data-acao="voto-nova">＋ Nova votação</button></p>' : ''}
+  ${A.votacoes.length ? A.votacoes.map(votacaoHtml).join('') : '<div class="card mudo">Nenhuma votação.</div>'}`;
+}
+
+function paginaAmigos() {
+  return `<div class="grade" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${S.dados.usuarios.map((u) => {
+    const m = S.dados.marcacoes.filter((x) => x.usuario === u.nome && x.status === 'vi').length;
+    return `<div class="card pessoa" data-acao="perfil" data-nome="${esc(u.nome)}">${avatarHtml(u)}<div><b>${esc(u.nome)}</b>${S.dados.admins.indexOf(u.nome) >= 0 ? ' <span class="tag">admin</span>' : ''}<div class="mudo pequeno">${m} visto(s)</div></div></div>`;
+  }).join('')}</div>`;
+}
+
+function paginaPerfil(nome) {
+  nome = decodeURIComponent(nome || S.nome);
+  const u = S.porUsuario[nome];
+  if (!u) return '<div class="card">Perfil não encontrado.</div>';
+  const meu = nome === S.nome;
+  const ms = S.dados.marcacoes.filter((m) => m.usuario === nome && S.porChave[m.chave]);
+  const favs = u.favoritos.map((k) => S.porChave[k]).filter(Boolean);
+  const vistos = ms.filter((m) => m.status === 'vi').map((m) => S.porChave[m.chave]);
+  const top = generosDe(vistos).slice(0, 5);
+  const aba = S.abaPerfil || 'vi';
+  const lista = ms.filter((m) => m.status === aba);
+  return `<div class="card"><div class="linha"><div style="flex:0 0 auto">${avatarHtml(u, true)}</div><div style="flex:1 1 200px"><h1>${esc(u.nome)}</h1><p class="mudo">${esc(u.bio) || 'Sem bio.'}</p></div>${meu ? '<button class="btn sec" data-acao="editar-perfil">Editar perfil</button>' : ''}</div>
+  ${top.length ? `<p class="tags">${top.map((g) => `<span class="tag on">${esc(g)}</span>`).join('')}</p>` : ''}</div>
+  <h2>Favoritos</h2>${favs.length ? `<div class="grade">${favs.map((t) => posterHtml(t)).join('')}</div>` : '<p class="mudo">Nenhum favorito' + (meu ? ' — abra um título e toque em ★' : '') + '.</p>'}
+  <br><div class="abas">${Object.keys(STATUS).map((k) => `<button class="btn ${k === aba ? '' : 'sec'}" data-acao="aba-perfil" data-aba="${k}" data-nome="${esc(nome)}">${STATUS[k]} (${ms.filter((m) => m.status === k).length})</button>`).join('')}</div>
+  <div class="grade">${lista.map((m) => posterHtml(S.porChave[m.chave], m.nota !== '' && m.nota != null ? '★' + m.nota : (m.temporada ? `T${m.temporada}E${m.episodio || 0}` : ''))).join('') || '<span class="mudo">Nada aqui ainda.</span>'}</div>`;
+}
+
+function paginaAdmin() {
+  if (!S.admin) return '<div class="card">Apenas administradores.</div>';
+  return `<div class="card"><h2>Código de convite</h2><div class="linha"><input id="a-codigo" placeholder="Novo código"><button class="btn" data-acao="admin-codigo">Trocar</button></div></div>
+  <div class="card"><h2>Gerar novo PIN</h2><div class="linha"><select id="a-user">${S.dados.usuarios.map((u) => `<option>${esc(u.nome)}</option>`).join('')}</select><button class="btn" data-acao="admin-pin">Gerar PIN</button></div></div>
+  <div class="card"><h2>Diagnóstico do servidor</h2><button class="btn sec" data-acao="admin-diag">Verificar</button><ul class="diag" id="a-diag"></ul></div>`;
+}
+
+/* ---------- Render ---------- */
+async function render() {
+  const app = $('#app');
+  const logado = !!S.nome && !!S.dados;
+  $('#topo').hidden = !logado;
+  const rota = (location.hash.replace(/^#\//, '') || 'inicio').split('/');
+  if (!logado) {
+    app.innerHTML = rota[0] === 'diag' ? await paginaDiag() : paginaLogin(rota[0] === 'cadastro' ? 'cadastro' : 'login');
     return;
   }
-
-  if (!destaqueId || !filmePorId(destaqueId)) {
-    const pool = recentes.slice(0, 6);
-    destaqueId = pool[Math.floor(Math.random() * pool.length)].tmdb_id;
-  }
-  const d = filmePorId(destaqueId);
-  const media = mediaGrupo(d.tmdb_id);
-  const meu = statusDe(ME.nome, d.tmdb_id);
-  const comFundo = pathOk(d.backdrop);
-  const fundo = comFundo ? `${IMG_GRANDE}${d.backdrop}` : pathOk(d.poster) ? `${IMG}${d.poster}` : '';
-  const quem = usuarioPorNome(d.sugerido_por);
-  const meta = [
-    media !== null ? `<span class="estrela">★ ${media.toFixed(1)}</span>` : '',
-    d.ano ? `<span>${esc(d.ano)}</span>` : '',
-    ehSerie(d) ? `<span>Série${d.temporadas ? ' · ' + esc(d.temporadas) + (Number(d.temporadas) === 1 ? ' temporada' : ' temporadas') : ''}</span>` : '<span>Filme</span>',
-    generosDe(d).length ? `<span>${esc(generosDe(d).slice(0, 3).join(' · '))}</span>` : '',
-  ].join('');
-
-  const meus = DATA.status.filter((s) => s.usuario === ME.nome);
-  const naLista = meus.filter((s) => s.status === 'assistindo' || s.status === 'quero').map((s) => filmePorId(s.tmdb_id)).filter(Boolean);
-  const melhores = recentes
-    .filter((f) => mediaGrupo(f.tmdb_id) !== null)
-    .sort((a, b) => mediaGrupo(b.tmdb_id) - mediaGrupo(a.tmdb_id))
-    .slice(0, 14);
-  const naoMarcados = recentes.filter((f) => !statusDe(ME.nome, f.tmdb_id)).slice(0, 14);
-  const eu = usuarioPorNome(ME.nome);
-  const aviso = eu && !eu.gerado && !bannerFechado ? `
-    <div class="caixa banner">
-      <span>🔐 Você escolheu o seu próprio PIN. Gere um PIN aleatório para não correr o risco de ter reaproveitado uma senha sua.</span>
-      <button type="button" class="principal" data-novo-pin>Gerar novo PIN</button>
-      <button type="button" class="link" data-fechar-banner>Agora não</button>
-    </div>` : '';
-
-  $('#app').innerHTML = `
-    ${aviso}
-    <section class="hero ${comFundo ? '' : 'sem-fundo'}" ${fundo ? `style="--bg-img:url('${esc(fundo)}')"` : ''}>
-      <div class="hero-conteudo">
-        <div class="hero-rotulo">EM DESTAQUE${quem ? ` · SUGERIDO POR ${esc(String(d.sugerido_por).toUpperCase())}` : ''}</div>
-        <h1>${esc(d.titulo)}</h1>
-        <div class="hero-meta">${meta}</div>
-        <p class="sin">${esc(d.sinopse) || 'Sem sinopse.'}</p>
-        <div class="hero-acoes">
-          <button class="principal" type="button" data-filme="${esc(d.tmdb_id)}">Ver detalhes</button>
-          ${meu ? `<span class="selo ${esc(meu.status)}" style="align-self:center">${esc(rotuloStatus(meu))}</span>`
-            : `<button type="button" data-rapido="${esc(d.tmdb_id)}">＋ Quero ver</button>`}
-        </div>
-      </div>
-    </section>
-    ${fila('Adicionados recentemente', recentes.slice(0, 14), '', '#/catalogo')}
-    ${melhores.length ? fila('Mais bem avaliados pelo grupo', melhores, '') : ''}
-    ${naLista.length ? fila('Na sua lista', naLista.slice(0, 14), '') : ''}
-    ${naoMarcados.length ? fila('Você ainda não marcou', naoMarcados, '') : ''}`;
-}
-
-async function rapido(id, btn) {
-  btn.disabled = true;
-  try {
-    await enviar('status', { tmdb_id: id, status: 'quero', nota: '', comentario: '' });
-    await carregar();
-    toast('Adicionado à sua lista!');
-    rota(true);
-  } catch (err) {
-    toast(err.message, true);
-    btn.disabled = false;
-  }
-}
-
-/* ---------- Catálogo ---------- */
-
-function viewCatalogo() {
-  const todosGeneros = [...new Set(DATA.filmes.flatMap(generosDe))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const tipos = [['', 'Tudo'], ['filme', 'Filmes'], ['serie', 'Séries']];
-  limite = LOTE;
-  $('#app').innerHTML = `
-    <div class="titulo-pagina"><h1>Catálogo</h1><span class="contagem" id="contagem"></span></div>
-    <div class="filtros">
-      <div class="abas-pill" id="tipos">
-        ${tipos.map(([v, t]) => `<button class="chip ${filtroTipo === v ? 'ativo' : ''}" data-tipo="${v}">${t}</button>`).join('')}
-      </div>
-      <select id="f-status" aria-label="Filtrar por minha marcação">
-        <option value="">Todas as marcações</option>
-        <option value="vi" ${filtroStatus === 'vi' ? 'selected' : ''}>Que eu vi</option>
-        <option value="assistindo" ${filtroStatus === 'assistindo' ? 'selected' : ''}>Que estou assistindo</option>
-        <option value="quero" ${filtroStatus === 'quero' ? 'selected' : ''}>Que quero ver</option>
-        <option value="nada" ${filtroStatus === 'nada' ? 'selected' : ''}>Que ainda não marquei</option>
-      </select>
-    </div>
-    <div class="filtros" id="chips">
-      <button class="chip ${filtroGenero === '' ? 'ativo' : ''}" data-genero="">Todos os gêneros</button>
-      ${todosGeneros.map((g) => `<button class="chip ${filtroGenero === g ? 'ativo' : ''}" data-genero="${esc(g)}">${esc(g)}</button>`).join('')}
-    </div>
-    <div class="grade" id="grade"></div>
-    <div class="mais" id="mais"></div>`;
-
-  $('#tipos').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-tipo]');
-    if (!b) return;
-    filtroTipo = b.dataset.tipo;
-    viewCatalogo();
-  });
-  $('#f-status').addEventListener('change', (e) => { filtroStatus = e.target.value; limite = LOTE; desenharGrade(); });
-  $('#chips').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-genero]');
-    if (!b) return;
-    filtroGenero = b.dataset.genero;
-    viewCatalogo();
-  });
-  desenharGrade();
-}
-
-function desenharGrade() {
-  const grade = $('#grade');
-  if (!grade) return;
-  const q = filtroBusca.trim().toLowerCase();
-  const lista = DATA.filmes
-    .filter((f) => !q || String(f.titulo).toLowerCase().includes(q))
-    .filter((f) => !filtroTipo || (filtroTipo === 'serie') === ehSerie(f))
-    .filter((f) => !filtroGenero || generosDe(f).includes(filtroGenero))
-    .filter((f) => {
-      if (!filtroStatus) return true;
-      const s = statusDe(ME.nome, f.tmdb_id);
-      if (filtroStatus === 'nada') return !s;
-      return s && s.status === filtroStatus;
-    })
-    .reverse();
-
-  $('#contagem').textContent = `${lista.length} ${lista.length === 1 ? 'título' : 'títulos'}`;
-  grade.innerHTML = lista.length
-    ? lista.slice(0, limite).map((f) => cardFilme(f)).join('')
-    : '<p class="aviso" style="grid-column:1/-1">Nada por aqui. Que tal <a href="#/sugerir"><u>sugerir um título</u></a>?</p>';
-  $('#mais').innerHTML = lista.length > limite
-    ? `<button type="button" data-mais>Mostrar mais (${lista.length - limite})</button>` : '';
-}
-
-/* ---------- Janela do título ---------- */
-
-function abrirFilme(id) {
-  const f = filmePorId(id);
-  if (!f) return;
-  const meu = statusDe(ME.nome, id);
-  const outros = DATA.status.filter((s) => String(s.tmdb_id) === String(id) && s.usuario !== ME.nome);
-  const media = mediaGrupo(id);
-  const serie = ehSerie(f);
-  const tipoTxt = serie ? `Série${f.temporadas ? ' · ' + f.temporadas + (Number(f.temporadas) === 1 ? ' temporada' : ' temporadas') : ''}` : 'Filme';
-
-  $('#modal-conteudo').innerHTML = `
-    <button class="fechar" data-fechar aria-label="Fechar">×</button>
-    <div class="detalhe">
-      ${posterHtml(f)}
-      <div class="corpo">
-        <h2>${esc(f.titulo)} <small class="suave">(${esc(f.ano)})</small></h2>
-        <p class="suave">${esc(tipoTxt)}${f.generos ? ' · ' + esc(f.generos) : ''}</p>
-        ${media !== null ? `<p><b style="color:var(--destaque)">★ ${media.toFixed(1)}</b> <span class="suave">média do grupo (${notasDe(id).length} ${notasDe(id).length === 1 ? 'nota' : 'notas'})</span></p>` : ''}
-        <p>${esc(f.sinopse) || 'Sem sinopse.'}</p>
-        <p class="suave" style="font-size:.85rem">Sugerido por <a href="#/perfil/${encodeURIComponent(f.sugerido_por)}" data-fechar><u>${esc(f.sugerido_por)}</u></a></p>
-      </div>
-    </div>
-
-    <h3 style="margin-top:1.1rem">Sua marcação</h3>
-    <div class="form-vi" data-filme-id="${esc(id)}">
-      <div class="linha">
-        <label for="nota">Nota (0–10):</label>
-        <input type="number" id="nota" min="0" max="10" step="0.5" value="${meu && meu.status === 'vi' ? esc(meu.nota) : ''}">
-      </div>
-      <textarea id="comentario" rows="2" placeholder="Comentário (opcional)">${meu ? esc(meu.comentario) : ''}</textarea>
-      <div class="acoes">
-        <button data-marcar="vi" class="${meu?.status === 'vi' ? 'ativo' : ''}">✓ Já vi</button>
-        ${serie ? `<button data-marcar="assistindo" class="${meu?.status === 'assistindo' ? 'ativo' : ''}">▶ Assistindo</button>` : ''}
-        <button data-marcar="quero" class="${meu?.status === 'quero' ? 'ativo' : ''}">★ Quero ver</button>
-        ${meu ? '<button data-marcar="remover" class="link">Remover marcação</button>' : ''}
-      </div>
-    </div>
-
-    <h3>Os amigos</h3>
-    ${outros.length ? outros.map((s) => `
-      <div class="amigo-status">
-        <a href="#/perfil/${encodeURIComponent(s.usuario)}" data-fechar><b>${esc(s.usuario)}</b></a>
-        ${s.status === 'vi' ? `viu${s.nota !== '' && s.nota != null ? ' e deu nota <b>' + esc(s.nota) + '</b>' : ''}` : s.status === 'assistindo' ? 'está assistindo' : 'quer ver'}
-        ${s.comentario ? `<div class="com suave">“${esc(s.comentario)}”</div>` : ''}
-      </div>`).join('') : '<p class="vazio">Ninguém marcou ainda.</p>'}
-    ${ehAdmin() ? `<div style="margin-top:1.2rem"><button class="perigo" data-admin-remover="${esc(id)}">🗑 Remover do catálogo</button></div>` : ''}
-  `;
-  $('#modal').hidden = false;
-}
-
-function fecharModal() { $('#modal').hidden = true; }
-
-async function marcar(id, status) {
-  const btns = document.querySelectorAll('#modal button');
-  btns.forEach((b) => (b.disabled = true));
-  try {
-    await enviar('status', {
-      tmdb_id: id,
-      status,
-      nota: $('#nota')?.value ?? '',
-      comentario: $('#comentario')?.value ?? '',
-    });
-    await carregar();
-    toast('Salvo!');
-    abrirFilme(id);
-    rota(true);
-  } catch (err) {
-    toast(err.message, true);
-    btns.forEach((b) => (b.disabled = false));
-  }
-}
-
-async function removerDoCatalogo(id) {
-  const f = filmePorId(id);
-  if (!confirm(`Remover "${f?.titulo || 'este título'}" do catálogo? As marcações dos amigos nele também serão apagadas.`)) return;
-  try {
-    await enviar('admin_remover', { tmdb_id: id });
-    await carregar();
-    fecharModal();
-    toast('Removido do catálogo.');
-    rota(true);
-  } catch (err) { toast(err.message, true); }
-}
-
-/* ---------- Sugerir ---------- */
-
-function viewSugerir() {
-  const serie = sugerirTipo === 'serie';
-  $('#app').innerHTML = `
-    <h1>Sugerir ${serie ? 'uma série' : 'um filme'}</h1>
-    <p class="suave">Busque pelo nome. Pôster, sinopse e gêneros vêm automaticamente do TMDB.</p>
-    <div class="abas-pill" id="tipos-sug" style="margin-bottom:.9rem">
-      <button class="chip ${!serie ? 'ativo' : ''}" data-tipo="filme">🎬 Filme</button>
-      <button class="chip ${serie ? 'ativo' : ''}" data-tipo="serie">📺 Série</button>
-    </div>
-    <form class="filtros" id="form-busca">
-      <input type="search" id="q" placeholder="${serie ? 'Ex.: Dark' : 'Ex.: Interestelar'}" required style="flex:1">
-      <button class="principal" type="submit">Buscar</button>
-    </form>
-    <div class="resultados" id="resultados"></div>`;
-
-  $('#tipos-sug').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-tipo]');
-    if (!b) return;
-    sugerirTipo = b.dataset.tipo;
-    viewSugerir();
-  });
-
-  $('#form-busca').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const box = $('#resultados');
-    box.innerHTML = '<p class="aviso">Buscando…</p>';
-    try {
-      const r = await tmdb(serie ? '/search/tv' : '/search/movie', { query: $('#q').value.trim() });
-      box.innerHTML = r.results.length
-        ? r.results.slice(0, 10).map((m) => resultadoHtml(m, serie)).join('')
-        : '<p class="aviso">Nada encontrado.</p>';
-    } catch (err) {
-      box.innerHTML = `<p class="erro">${esc(err.message)}</p>`;
-    }
-  });
-
-  $('#resultados').addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-add]');
-    if (!b) return;
-    b.disabled = true;
-    b.textContent = 'Adicionando…';
-    try {
-      const d = await tmdb(`/${serie ? 'tv' : 'movie'}/${b.dataset.add}`);
-      await enviar('filme', {
-        filme: {
-          tipo: serie ? 'serie' : 'filme',
-          tmdb_id: serie ? 'tv' + d.id : d.id,
-          titulo: d.title || d.name,
-          ano: (d.release_date || d.first_air_date || '').slice(0, 4),
-          generos: (d.genres || []).map((g) => g.name).join(', '),
-          poster: d.poster_path || '',
-          backdrop: d.backdrop_path || '',
-          sinopse: d.overview || '',
-          temporadas: serie ? d.number_of_seasons || '' : '',
-        },
-      });
-      await carregar();
-      toast(serie ? 'Série adicionada ao catálogo!' : 'Filme adicionado ao catálogo!');
-      b.textContent = '✓ Adicionado';
-    } catch (err) {
-      toast(err.message, true);
-      b.disabled = false;
-      b.textContent = 'Adicionar';
-    }
-  });
-}
-
-function resultadoHtml(m, serie) {
-  const titulo = m.title || m.name || '';
-  const ano = (m.release_date || m.first_air_date || '').slice(0, 4);
-  const jaTem = !!filmePorId(serie ? 'tv' + m.id : m.id);
-  return `
-    <div class="resultado">
-      ${pathOk(m.poster_path) ? `<img src="${IMG}${esc(m.poster_path)}" alt="">` : '<div class="sem-poster">🎞️</div>'}
-      <div class="txt">
-        <b>${esc(titulo)}</b> <small class="suave">${esc(ano)}</small>
-        <div class="sin">${esc(m.overview) || 'Sem sinopse.'}</div>
-      </div>
-      ${jaTem ? '<span class="selo">Já no catálogo</span>' : `<button class="principal" data-add="${esc(m.id)}">Adicionar</button>`}
-    </div>`;
-}
-
-/* ---------- Amigos e perfis ---------- */
-
-function contagemDe(nome, status) {
-  return DATA.status.filter((s) => s.usuario === nome && s.status === status).length;
-}
-
-function viewAmigos() {
-  $('#app').innerHTML = `
-    <h1>Amigos</h1>
-    <div class="amigos">
-      ${DATA.usuarios.map((u) => `
-        <a class="amigo" style="--perfil:${corDe(u)}" href="#/perfil/${encodeURIComponent(u.nome)}">
-          <div class="avatar">${esc(u.avatar || '🎬')}</div>
-          <div><b>${esc(u.nome)}</b><br><small>${contagemDe(u.nome, 'vi')} vistos · ${contagemDe(u.nome, 'quero')} na lista</small></div>
-        </a>`).join('')}
-    </div>`;
-}
-
-function viewPerfil(nome) {
-  const u = DATA.usuarios.find((x) => x.nome === nome);
-  if (!u) { $('#app').innerHTML = '<p class="aviso">Usuário não encontrado.</p>'; return; }
-  const meuPerfil = u.nome === ME.nome;
-  const meus = DATA.status.filter((s) => s.usuario === u.nome);
-  const notas = meus.filter((s) => s.status === 'vi' && s.nota !== '' && s.nota != null).map((s) => Number(s.nota));
-  const mediaDada = notas.length ? (notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(1) : '–';
-  const sugeridos = DATA.filmes.filter((f) => f.sugerido_por === u.nome);
-
-  const abas = [
-    ['vi', 'Já viu', contagemDe(u.nome, 'vi')],
-    ['assistindo', 'Assistindo', contagemDe(u.nome, 'assistindo')],
-    ['quero', 'Quer ver', contagemDe(u.nome, 'quero')],
-    ['sugeriu', 'Sugeriu', sugeridos.length],
-  ];
-  if (!abas.some(([k]) => k === perfilAba)) perfilAba = 'vi';
-
-  $('#app').innerHTML = `
-    <div class="perfil-capa" style="--perfil:${corDe(u)}">
-      <div class="avatar">${esc(u.avatar || '🎬')}</div>
-      <div class="perfil-info">
-        <h1>${esc(u.nome)}</h1>
-        <div class="suave">${esc(u.bio) || (meuPerfil ? 'Escreva algo sobre você!' : 'Sem bio ainda.')}</div>
-        ${meuPerfil ? '<button class="link" id="editar" type="button" style="padding-left:0">✏️ Editar perfil</button>' : ''}
-        <div class="stats">
-          <div class="stat"><b>${contagemDe(u.nome, 'vi')}</b><span>vistos</span></div>
-          <div class="stat"><b>${contagemDe(u.nome, 'quero') + contagemDe(u.nome, 'assistindo')}</b><span>na lista</span></div>
-          <div class="stat"><b>${sugeridos.length}</b><span>sugestões</span></div>
-          <div class="stat"><b>${mediaDada}</b><span>nota média</span></div>
-        </div>
-      </div>
-    </div>
-    <div id="editor"></div>
-    <div class="abas" id="abas" style="--perfil:${corDe(u)}">
-      ${abas.map(([k, t, n]) => `<button class="aba ${perfilAba === k ? 'ativo' : ''}" data-aba="${k}">${t} (${n})</button>`).join('')}
-    </div>
-    <div id="perfil-lista"></div>
-    <div class="mais" id="perfil-mais"></div>`;
-
-  let lim = LOTE;
-  const desenhar = () => {
-    let itens;
-    if (perfilAba === 'sugeriu') itens = sugeridos.slice().reverse().map((f) => cardFilme(f, null));
-    else {
-      itens = meus.filter((s) => s.status === perfilAba).reverse()
-        .map((s) => { const f = filmePorId(s.tmdb_id); return f ? cardFilme(f, s) : ''; })
-        .filter(Boolean);
-    }
-    $('#perfil-lista').innerHTML = itens.length
-      ? `<div class="grade">${itens.slice(0, lim).join('')}</div>`
-      : '<p class="vazio">Nada por aqui ainda.</p>';
-    $('#perfil-mais').innerHTML = itens.length > lim
-      ? `<button type="button" id="perfil-mais-btn">Mostrar mais (${itens.length - lim})</button>` : '';
-    const mais = $('#perfil-mais-btn');
-    if (mais) mais.addEventListener('click', () => { lim += LOTE; desenhar(); });
+  $('#chip').textContent = S.nome;
+  $('#menu-admin').hidden = !S.admin;
+  document.querySelectorAll('#menu a').forEach((a) => a.classList.toggle('ativo', a.dataset.p === rota[0]));
+  const paginas = {
+    inicio: paginaInicio, catalogo: paginaCatalogo, agenda: paginaAgenda, amigos: paginaAmigos,
+    perfil: () => paginaPerfil(rota[1]), admin: paginaAdmin,
   };
-  desenhar();
-
-  $('#abas').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-aba]');
-    if (!b) return;
-    perfilAba = b.dataset.aba;
-    lim = LOTE;
-    document.querySelectorAll('#abas .aba').forEach((x) => x.classList.toggle('ativo', x === b));
-    desenhar();
-  });
-
-  if (meuPerfil) $('#editar').addEventListener('click', () => abrirEditor(u));
+  app.innerHTML = (paginas[rota[0]] || paginaInicio)();
 }
 
-function abrirEditor(u) {
-  const atual = corDe(u);
-  const original = atual;
-  $('#editor').innerHTML = `
-    <form class="caixa editor" id="form-perfil">
-      <label for="f-avatar">Avatar (um emoji)</label>
-      <input id="f-avatar" name="avatar" maxlength="4" value="${esc(u.avatar || '🎬')}" style="width:90px">
-      <label for="f-bio">Bio</label>
-      <textarea id="f-bio" name="bio" rows="2" maxlength="300">${esc(u.bio)}</textarea>
-      <label>Sua cor de destaque <span class="suave">(só muda o seu visual e o seu perfil)</span></label>
-      <div class="cores" id="cores">
-        ${CORES.map((c) => `<button type="button" class="cor-bolinha ${c.toLowerCase() === atual.toLowerCase() ? 'sel' : ''}" data-cor="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}
-        <input type="color" id="cor-livre" value="${atual}" aria-label="Escolher outra cor">
-      </div>
-      <input type="hidden" name="cor" value="${atual}">
-      <div class="acoes">
-        <button class="principal" type="submit">Salvar</button>
-        <button type="button" id="cancelar">Cancelar</button>
-        <button type="button" class="link" data-novo-pin>Gerar novo PIN</button>
-      </div>
-    </form>`;
+/* ---------- Modais ---------- */
+function modalTitulo(chave) {
+  const t = S.porChave[chave]; if (!t) return;
+  const m = minhaMarca(chave) || {};
+  const u = S.porUsuario[S.nome];
+  const fav = u && u.favoritos.indexOf(chave) >= 0;
+  const outros = (S.marcas[chave] || []).map((x) => `<span class="tag">${esc(x.usuario)}: ${STATUS[x.status]}${x.nota !== '' && x.nota != null ? ' ★' + esc(x.nota) : ''}</span>`).join('');
+  abrirModal(`<div class="titulo-modal">${t.poster ? `<img src="${IMG}w342${esc(t.poster)}" alt="">` : ''}<div><h2>${esc(t.titulo)}</h2><p class="mudo pequeno">${esc(t.ano)} · ${t.tipo === 'serie' ? 'Série' + (t.temporadas ? ' · ' + esc(t.temporadas) + ' temp.' : '') : 'Filme'} · sugerido por ${esc(t.sugerido_por)}</p>
+  <p class="tags">${String(t.generos).split(',').filter(Boolean).map((g) => `<span class="tag">${esc(g.trim())}</span>`).join('')}</p><p>${esc(t.sinopse)}</p></div></div>
+  <p class="tags">${outros}</p>
+  <form id="f-marca" data-chave="${esc(chave)}"><div class="linha"><div><label>Meu status</label><select id="m-status"><option value="remover">—</option>${Object.keys(STATUS).map((k) => `<option value="${k}"${m.status === k ? ' selected' : ''}>${STATUS[k]}</option>`).join('')}</select></div>
+  <div><label>Nota (0–10)</label><input id="m-nota" type="number" min="0" max="10" step="0.5" value="${esc(m.nota)}"></div></div>
+  ${t.tipo === 'serie' ? `<div class="linha"><div><label>Temporada</label><input id="m-temp" type="number" min="0" value="${esc(m.temporada)}"></div><div><label>Episódio</label><input id="m-ep" type="number" min="0" value="${esc(m.episodio)}"></div></div>` : ''}
+  <label>Comentário</label><textarea id="m-com">${esc(m.comentario)}</textarea>
+  <div class="linha" style="margin-top:10px"><button class="btn">Salvar</button><button type="button" class="btn sec" data-acao="favorito" data-chave="${esc(chave)}" data-valor="${fav ? 0 : 1}">${fav ? '★ Remover favorito' : '☆ Favoritar'}</button>${S.admin ? `<button type="button" class="btn perigo" data-acao="remover-titulo" data-chave="${esc(chave)}">Remover do catálogo</button>` : ''}<button type="button" class="btn sec" data-acao="fechar">Fechar</button></div></form>`);
+}
 
-  const form = $('#form-perfil');
-  const escolher = (c) => {
-    form.elements.cor.value = c;
-    $('#cor-livre').value = c;
-    document.querySelectorAll('.cor-bolinha').forEach((b) => b.classList.toggle('sel', b.dataset.cor.toLowerCase() === c.toLowerCase()));
-    aplicarCor(c);
+function modalSugerir() {
+  const lim = S.dados.limite;
+  abrirModal(`<h2>Sugerir título</h2><p class="mudo pequeno">${S.admin ? 'Administradores não têm limite.' : `Limite de ${lim} títulos por semana.`}</p>
+  <div class="linha"><select id="s-tipo" style="flex:0 0 110px"><option value="filme">Filme</option><option value="serie">Série</option></select><input id="s-q" placeholder="Buscar no TMDB"><button class="btn" data-acao="buscar-tmdb">Buscar</button></div>
+  <div id="s-res" class="grade" style="margin-top:12px"></div><p><button class="btn sec" data-acao="fechar">Fechar</button></p>`);
+}
+
+async function buscarTmdb() {
+  const q = $('#s-q').value.trim(), tipo = $('#s-tipo').value;
+  if (!q) return;
+  const chave = (window.CONFIG || {}).TMDB_KEY;
+  const res = await fetch(`https://api.themoviedb.org/3/search/${tipo === 'serie' ? 'tv' : 'movie'}?api_key=${encodeURIComponent(chave)}&language=pt-BR&query=${encodeURIComponent(q)}`);
+  if (!res.ok) throw new Error('TMDB recusou a busca (confira a chave em config.js).');
+  const j = await res.json();
+  S.tmdb = (j.results || []).slice(0, 12);
+  $('#s-res').innerHTML = S.tmdb.map((r, i) => `<div class="poster" data-acao="escolher-tmdb" data-i="${i}">${r.poster_path ? `<img src="${IMG}w342${esc(r.poster_path)}" alt="">` : `<div class="sem">${esc(r.title || r.name)}</div>`}<div class="info"><b>${esc(r.title || r.name)}</b><span class="mudo">${esc((r.release_date || r.first_air_date || '').slice(0, 4))}</span></div></div>`).join('') || '<span class="mudo">Nada encontrado.</span>';
+}
+
+async function escolherTmdb(i) {
+  const r = S.tmdb[i], serie = $('#s-tipo').value === 'serie';
+  const chave = window.CONFIG.TMDB_KEY;
+  const res = await fetch(`https://api.themoviedb.org/3/${serie ? 'tv' : 'movie'}/${r.id}?api_key=${encodeURIComponent(chave)}&language=pt-BR`);
+  if (!res.ok) throw new Error('TMDB recusou a consulta.');
+  const d = await res.json();
+  const item = {
+    tipo: serie ? 'serie' : 'filme', tmdb_id: d.id, titulo: d.title || d.name,
+    ano: (d.release_date || d.first_air_date || '').slice(0, 4), generos: (d.genres || []).map((g) => g.name).join(', '),
+    poster: d.poster_path || '', backdrop: d.backdrop_path || '', sinopse: d.overview || '', temporadas: d.number_of_seasons || '',
   };
-  $('#cores').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-cor]');
-    if (b) escolher(b.dataset.cor);
-  });
-  $('#cor-livre').addEventListener('input', (e) => escolher(e.target.value));
-  $('#cancelar').addEventListener('click', () => { aplicarCor(original); $('#editor').innerHTML = ''; });
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = Object.fromEntries(new FormData(form));
-    try {
-      await enviar('perfil', { avatar: f.avatar, bio: f.bio, cor: f.cor });
-      await carregar();
-      aplicarCor(f.cor);
-      atualizarTopo();
-      toast('Perfil atualizado!');
-      viewPerfil(u.nome);
-    } catch (err) { toast(err.message, true); }
-  });
+  const out = await chamar('titulo_add', { item });
+  toast('Adicionado!' + (out.restantes != null ? ` Restam ${out.restantes} esta semana.` : ''));
+  fecharModal();
+  await atualizar('dados');
 }
 
-/* ---------- Admin ---------- */
-
-async function viewAdmin() {
-  if (!ehAdmin()) { $('#app').innerHTML = '<p class="aviso">Área restrita aos administradores.</p>'; return; }
-  $('#app').innerHTML = '<p class="aviso">Carregando…</p>';
-  let info;
-  try { info = await enviar('admin_info'); } catch (err) { $('#app').innerHTML = `<p class="aviso">${esc(err.message)}</p>`; return; }
-
-  $('#app').innerHTML = `
-    <h1>Administração</h1>
-    <div class="admin-grade">
-      <section class="caixa">
-        <h2>Código de convite</h2>
-        <form class="linha-form" id="form-codigo">
-          <input name="codigo" value="${esc(info.codigo)}" required minlength="3" aria-label="Código de convite">
-          <button class="principal" type="submit">Salvar</button>
-        </form>
-      </section>
-      <section class="caixa">
-        <h2>Usuários</h2>
-        ${info.usuarios.map((n) => `
-          <div class="linha-usuario">
-            <span>${esc(n)}</span>
-            <button type="button" data-pin="${esc(n)}">Gerar novo PIN</button>
-          </div>`).join('')}
-      </section>
-    </div>`;
-
-  $('#form-codigo').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-      await enviar('admin_codigo', { codigo: new FormData(e.target).get('codigo') });
-      toast('Código atualizado!');
-    } catch (err) { toast(err.message, true); }
-  });
-
-  $('#app').querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', async () => {
-    const alvo = b.dataset.pin;
-    if (!confirm(`Gerar um novo PIN para ${alvo}? O atual deixa de funcionar.`)) return;
-    try {
-      const r = await enviar('admin_pin', { usuario: alvo });
-      if (alvo.toLowerCase() === ME.nome.toLowerCase()) {
-        ME.pin = r.pin;
-        guardar('me', JSON.stringify(ME));
-      }
-      mostrarPinGerado(r.pin, r.usuario);
-    } catch (err) { toast(err.message, true); }
-  }));
+function modalVoto() {
+  abrirModal(`<h2>Nova votação</h2><form id="f-voto"><label>Nome</label><input id="v-titulo" placeholder="Filme de sábado" required>
+  <label>Candidatos (2 a 15)</label><div style="max-height:260px;overflow:auto">${S.dados.titulos.map((t) => `<label class="linha" style="margin:2px 0"><input type="checkbox" class="v-cand" value="${esc(t.chave)}"> ${esc(t.titulo)} <span class="mudo">(${esc(t.ano)})</span></label>`).join('')}</div>
+  <div class="linha"><div><label>Votos por pessoa</label><input id="v-max" type="number" min="1" max="5" value="1"></div><div><label>Prazo (opcional)</label><input id="v-prazo" type="date"></div></div>
+  <label class="linha"><input type="checkbox" id="v-ocultar"> Ocultar resultado até encerrar</label>
+  <div class="linha" style="margin-top:10px"><button class="btn">Criar</button><button type="button" class="btn sec" data-acao="fechar">Cancelar</button></div></form>`);
 }
 
-/* ---------- Rotas ---------- */
-
-function paginaAtual() {
-  const partes = (location.hash || '#/inicio').replace(/^#\/?/, '').split('/');
-  let arg = '';
-  try { arg = decodeURIComponent(partes.slice(1).join('/')); } catch (e) { arg = ''; }
-  return { pagina: partes[0] || 'inicio', arg };
+function modalSessao() {
+  abrirModal(`<h2>Nova sessão</h2><form id="f-sessao"><div class="linha"><div><label>Data</label><input id="ss-data" type="date" value="${hoje()}" required></div><div><label>Hora</label><input id="ss-hora" type="time" value="21:00" required></div></div>
+  <label>Título</label><select id="ss-chave"><option value="">(nenhum)</option>${S.dados.titulos.map((t) => `<option value="${esc(t.chave)}">${esc(t.titulo)}</option>`).join('')}</select>
+  <label>Nome da sessão (opcional)</label><input id="ss-rotulo"><label>Local / link da call (opcional)</label><input id="ss-local">
+  <div class="linha" style="margin-top:10px"><button class="btn">Criar</button><button type="button" class="btn sec" data-acao="fechar">Cancelar</button></div></form>`);
 }
 
-function rota(manterScroll) {
-  if (!ME) return;
-  const { pagina, arg } = paginaAtual();
-  const ativo = pagina === 'perfil' && arg && arg !== ME.nome ? 'amigos' : pagina;
-  document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('ativo', a.dataset.nav === ativo));
-
-  if (pagina === 'catalogo') viewCatalogo();
-  else if (pagina === 'sugerir') viewSugerir();
-  else if (pagina === 'amigos') viewAmigos();
-  else if (pagina === 'perfil') viewPerfil(arg || ME.nome);
-  else if (pagina === 'admin') viewAdmin();
-  else viewInicio();
-  if (manterScroll !== true) window.scrollTo(0, 0);
+function modalPerfil() {
+  const u = S.porUsuario[S.nome];
+  abrirModal(`<h2>Editar perfil</h2><form id="f-perfil"><label>Avatar (um emoji)</label><input id="p-avatar" maxlength="8" value="${esc(u.avatar)}">
+  <label>Bio</label><textarea id="p-bio" maxlength="300">${esc(u.bio)}</textarea><label>Cor de destaque</label><input id="p-cor" type="color" value="${esc(u.cor || '#e6b85c')}">
+  <div class="linha" style="margin-top:10px"><button class="btn">Salvar</button><button type="button" class="btn sec" data-acao="novo-pin">Gerar novo PIN</button><button type="button" class="btn sec" data-acao="fechar">Cancelar</button></div></form>`);
 }
 
-function rerenderSeguro() {
-  const { pagina } = paginaAtual();
-  const ativo = document.activeElement;
-  const digitando = ativo && ativo.matches && ativo.matches('input, textarea, select');
-  const editando = $('#editor') && $('#editor').children.length > 0;
-  if (!$('#modal').hidden || digitando || editando || pagina === 'sugerir' || pagina === 'admin') return;
-  rota(true);
+function modalPin(titulo, pin) {
+  abrirModal(`<h2>${esc(titulo)}</h2><div class="pin">${esc(pin)}</div><p class="mudo">Anote agora: ele não será mostrado de novo.</p><button class="btn" data-acao="fechar">Anotei</button>`);
 }
 
-/* ---------- Início do app ---------- */
-
-function prepararUsuario() {
-  const eu = DATA.usuarios.find((u) => String(u.nome).toLowerCase() === ME.nome.toLowerCase());
-  if (!eu) return false;
-  ME.nome = eu.nome;
-  aplicarCor(eu.cor);
-  atualizarTopo();
-  return true;
+/* ---------- Execução protegida ---------- */
+async function seguro(fn, botao) {
+  if (botao) botao.disabled = true;
+  try { await fn(); } catch (e) { mostrarErro(e.message); toast(e.message); } finally { if (botao) botao.disabled = false; }
 }
 
-async function iniciar() {
-  if (!ME) return telaLogin();
-  mostrarApp();
-  if (CONFIG.API_URL.startsWith('COLE_AQUI')) {
-    $('#app').innerHTML = '<p class="aviso">Falta configurar o <b>config.js</b>.</p>';
-    return;
-  }
-
-  const c = lerDados();
-  if (c) {
-    DATA = c.d;
-    if (prepararUsuario()) {
-      rota();
-      carregar()
-        .then((mudou) => { if (mudou) { if (!prepararUsuario()) return sair(); rerenderSeguro(); } })
-        .catch(() => { /* sem rede: segue com o que já tem */ });
-      return;
-    }
-  }
-
-  $('#app').innerHTML = '<p class="aviso">Carregando…</p>';
-  try {
-    await carregar();
-  } catch (err) {
-    if (ME) $('#app').innerHTML = '<p class="aviso">Não consegui carregar os dados. Confira a URL do Apps Script no config.js.</p>';
-    return;
-  }
-  if (!prepararUsuario()) { sair(); return; }
-  rota();
-}
-
+/* ---------- Eventos ---------- */
 document.addEventListener('click', (e) => {
-  const cp = e.target.closest('[data-copiar]');
-  if (cp) return copiar(cp.dataset.copiar);
+  if (e.target.id === 'modal') return fecharModal();
+  if (e.target.id === 'sugerir') return modalSugerir();
+  if (e.target.id === 'sair') return sair();
+  const el = e.target.closest('[data-acao]');
+  if (!el) return;
+  const d = el.dataset;
+  const acao = d.acao;
+  const dados = (a, extra, ok, tudo) => seguro(async () => { await chamar(a, extra); if (ok) toast(ok); await atualizar(tudo); }, el);
+  if (acao === 'fechar') fecharModal();
+  else if (acao === 'fechar-erro') $('#erro-painel').hidden = true;
+  else if (acao === 'copiar-erro') { try { navigator.clipboard.writeText(S.erro || ''); toast('Copiado.'); } catch (x) { /* sem área de transferência */ } }
+  else if (acao === 'titulo') modalTitulo(d.chave);
+  else if (acao === 'mais') { S.filtro.pag++; render(); }
+  else if (acao === 'perfil') location.hash = '#/perfil/' + encodeURIComponent(d.nome);
+  else if (acao === 'aba-perfil') { S.abaPerfil = d.aba; render(); }
+  else if (acao === 'editar-perfil') modalPerfil();
+  else if (acao === 'buscar-tmdb') seguro(buscarTmdb, el);
+  else if (acao === 'escolher-tmdb') seguro(() => escolherTmdb(Number(d.i)));
+  else if (acao === 'favorito') seguro(async () => { await chamar('favorito', { chave: d.chave, valor: d.valor === '1' }); await atualizar('dados'); modalTitulo(d.chave); }, el);
+  else if (acao === 'remover-titulo') { if (confirm('Remover este título do catálogo para todos?')) dados('admin_remover', { chave: d.chave }, 'Removido.', 'dados').then(fecharModal); }
+  else if (acao === 'novo-pin') { if (confirm('Gerar um novo PIN? O atual deixa de valer.')) seguro(async () => { const r = await chamar('novo_pin'); S.pin = r.pin; ls.set('cda_sessao', { nome: S.nome, pin: r.pin }); modalPin('Seu novo PIN', r.pin); }, el); }
+  else if (acao === 'votar') {
+    const chaves = [...document.querySelectorAll(`[data-voto="${d.id}"] input:checked`)].map((i) => i.value);
+    dados('votar', { id: d.id, chaves }, 'Voto salvo!', 'agenda');
+  }
+  else if (acao === 'voto-nova') modalVoto();
+  else if (acao === 'voto-encerrar') seguro(async () => {
+    let r = await chamar('voto_encerrar', { id: d.id });
+    if (!r.fechada) {
+      const nomes = r.empate.map((k) => S.porChave[k] ? S.porChave[k].titulo : k);
+      const esc1 = prompt('Empate: ' + nomes.map((n, i) => (i + 1) + ') ' + n).join('  ') + '\nDigite o número do vencedor:');
+      const i = Number(esc1) - 1;
+      if (!(i >= 0 && i < r.empate.length)) return;
+      r = await chamar('voto_encerrar', { id: d.id, vencedor: r.empate[i] });
+    }
+    toast('Votação encerrada.');
+    await atualizar();
+  }, el);
+  else if (acao === 'voto-apagar') { if (confirm('Apagar esta votação?')) dados('voto_apagar', { id: d.id }, 'Apagada.'); }
+  else if (acao === 'sessao-nova') modalSessao();
+  else if (acao === 'sessao-apagar') { if (confirm('Apagar esta sessão?')) dados('sessao_apagar', { id: d.id }, 'Apagada.'); }
+  else if (acao === 'admin-codigo') dados('admin_codigo', { codigo: $('#a-codigo').value }, 'Código trocado.', 'dados');
+  else if (acao === 'admin-pin') seguro(async () => { const r = await chamar('admin_pin', { usuario: $('#a-user').value }); modalPin('Novo PIN de ' + r.usuario, r.pin); }, el);
+  else if (acao === 'admin-diag') seguro(async () => { const r = await chamar('admin_diag'); $('#a-diag').innerHTML = r.itens.map((i) => `<li class="${i.ok ? 'ok' : 'nok'}">${i.ok ? '✔' : '✖'} ${esc(i.msg)}</li>`).join(''); }, el);
+});
 
-  if (e.target.closest('[data-novo-pin]')) return gerarNovoPin();
-  if (e.target.closest('[data-fechar-banner]')) { bannerFechado = true; return rota(true); }
-  if (e.target.closest('[data-mais]')) { limite += LOTE; return desenharGrade(); }
+document.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const id = e.target.id;
+  const botao = e.target.querySelector('button:not([type=button])');
+  if (id === 'f-login') {
+    const nome = $('#l-nome').value.trim();
+    if ($('#l-convite')) {
+      seguro(async () => {
+        const r = await chamar('cadastrar', { nome, convite: $('#l-convite').value }, true);
+        await entrar(r.nome, r.pin);
+        modalPin('Seu PIN de acesso', r.pin);
+      }, botao);
+    } else seguro(() => entrar(nome, $('#l-pin').value.trim()), botao);
+  } else if (id === 'f-marca') {
+    const t = e.target.dataset.chave;
+    seguro(async () => {
+      await chamar('marcar', { chave: t, status: $('#m-status').value, nota: $('#m-nota').value, comentario: $('#m-com').value, temporada: $('#m-temp') ? $('#m-temp').value : '', episodio: $('#m-ep') ? $('#m-ep').value : '' });
+      toast('Salvo!'); fecharModal(); await atualizar('dados');
+    }, botao);
+  } else if (id === 'f-perfil') {
+    seguro(async () => {
+      await chamar('perfil', { avatar: $('#p-avatar').value, bio: $('#p-bio').value, cor: $('#p-cor').value });
+      aplicarCor($('#p-cor').value); toast('Perfil salvo!'); fecharModal(); await atualizar('dados');
+    }, botao);
+  } else if (id === 'f-voto') {
+    seguro(async () => {
+      await chamar('voto_criar', { titulo: $('#v-titulo').value, candidatos: [...document.querySelectorAll('.v-cand:checked')].map((i) => i.value), max_votos: $('#v-max').value, prazo: $('#v-prazo').value, ocultar: $('#v-ocultar').checked });
+      toast('Votação criada!'); fecharModal(); await atualizar();
+    }, botao);
+  } else if (id === 'f-sessao') {
+    seguro(async () => {
+      await chamar('sessao_criar', { data: $('#ss-data').value, hora: $('#ss-hora').value, chave: $('#ss-chave').value, rotulo: $('#ss-rotulo').value, local: $('#ss-local').value });
+      toast('Sessão criada!'); fecharModal(); await atualizar();
+    }, botao);
+  }
+});
 
-  const q = e.target.closest('[data-rapido]');
-  if (q) return rapido(q.dataset.rapido, q);
+let tBusca;
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'c-q') return;
+  clearTimeout(tBusca);
+  tBusca = setTimeout(() => { S.filtro.q = e.target.value; S.filtro.pag = 1; render().then(() => { const i = $('#c-q'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }); }, 250);
+});
 
-  const m = e.target.closest('[data-marcar]');
-  if (m) return marcar(m.closest('[data-filme-id]').dataset.filmeId, m.dataset.marcar);
-
-  const r = e.target.closest('[data-admin-remover]');
-  if (r) return removerDoCatalogo(r.dataset.adminRemover);
-
-  const card = e.target.closest('[data-filme]');
-  if (card) return abrirFilme(card.dataset.filme);
-
-  if (e.target.closest('[data-fechar]') || e.target.id === 'modal') fecharModal();
+document.addEventListener('change', (e) => {
+  const m = { 'c-tipo': 'tipo', 'c-genero': 'genero', 'c-status': 'status', 'c-ordem': 'ordem' }[e.target.id];
+  if (m) { S.filtro[m] = e.target.value; S.filtro.pag = 1; render(); }
 });
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.id === 's-q') { e.preventDefault(); seguro(buscarTmdb); }
   if (e.key === 'Escape') fecharModal();
-  if (e.key === 'Enter' && e.target.matches?.('.filme[data-filme]')) abrirFilme(e.target.dataset.filme);
 });
 
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !ME || Date.now() - ultimaChecagem < INTERVALO_CHECAGEM) return;
-  carregar().then((mudou) => { if (mudou) rerenderSeguro(); }).catch(() => { /* sem rede */ });
-});
+window.addEventListener('hashchange', () => { if (S.nome) { if (S.dados) render(); } else render(); });
 
-window.addEventListener('hashchange', () => { fecharModal(); rota(); });
+/* ---------- Início ---------- */
+(async function iniciar() {
+  const s = ls.get('cda_sessao');
+  if (s && s.nome && configOk()) {
+    try { await entrar(s.nome, s.pin); return; } catch (e) {
+      if (!/PIN|Nome|Muitas/.test(e.message)) mostrarErro(e.message);
+      ls.del('cda_sessao');
+    }
+  }
+  if (!configOk()) mostrarErro('config.js ainda não foi preenchido. Abra o Diagnóstico na tela de entrada.');
+  render();
+})();
 
-$('#sair').addEventListener('click', () => sair());
-
-$('#busca-global').addEventListener('input', (e) => {
-  filtroBusca = e.target.value;
-  clearTimeout(tBusca);
-  tBusca = setTimeout(() => {
-    limite = LOTE;
-    if ((location.hash || '').startsWith('#/catalogo')) desenharGrade();
-    else location.hash = '#/catalogo';
-  }, 160);
-});
-
-aplicarCor(ler('cor'));
-iniciar();
+setInterval(() => { if (S.nome && !document.hidden && $('#modal').hidden) atualizar().catch(() => {}); }, 60000);
