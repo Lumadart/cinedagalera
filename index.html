@@ -1,32 +1,20 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="versao" content="4">
-<title>Cinema dos Amigos</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#140B0F">
+  <title>Cine da galera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
-<div id="erro-painel" hidden></div>
-<header id="topo" hidden>
-  <a class="logo" href="#/inicio">🎬 <span>Cinema dos Amigos</span></a>
-  <nav id="menu">
-    <a href="#/inicio" data-p="inicio">Início</a>
-    <a href="#/catalogo" data-p="catalogo">Catálogo</a>
-    <a href="#/agenda" data-p="agenda">Agenda</a>
-    <a href="#/amigos" data-p="amigos">Amigos</a>
-    <a href="#/perfil" data-p="perfil">Perfil</a>
-    <a href="#/admin" data-p="admin" id="menu-admin" hidden>Admin</a>
-  </nav>
-  <button id="sugerir" class="btn">＋ Sugerir</button>
-  <span class="chip-usuario" id="chip"></span>
-  <button id="sair" class="btn sec">Sair</button>
-</header>
-<main id="app"></main>
-<div id="modal" hidden><div class="caixa" id="caixa"></div></div>
-<div id="toast" hidden></div>
-<script src="config.js"></script>
-<script src="app.js"></script>
+  <div id="app"><p class="carregando-inicial">Carregando…</p></div>
+  <div id="avisos" class="avisos" role="status" aria-live="polite"></div>
+  <noscript>Este site precisa de JavaScript para funcionar.</noscript>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
