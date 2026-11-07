@@ -83,15 +83,15 @@ export async function sair() {
 export function casca(rota, conteudo, { busca = null } = {}) {
   const item = (id, href, texto) =>
     h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, texto);
-  const emBreve = (texto) => h('span', { class: 'item desativado', 'aria-disabled': 'true' }, texto, h('small', null, 'em breve'));
   const m = estado.membro;
-
+  const emBreve = (texto) => h('span', { class: 'item desativado', 'aria-disabled': 'true' }, texto, h('small', null, 'em breve'));
   return h('div', { class: 'casca' },
     h('aside', { class: 'menu' },
       h('a', { class: 'marca', href: '#/' }, h('span', { class: 'logo', 'aria-hidden': 'true' }), NOME_DO_GRUPO),
       h('nav', { class: 'nav', 'aria-label': 'Principal' },
         item('catalogo', '#/', 'Catálogo'),
         item('adicionar', '#/adicionar', 'Adicionar título'),
+        m && m.admin ? item('admin', '#/admin', 'Administração') : null,
         emBreve('Eventos'),
         emBreve('Minha lista')
       ),
