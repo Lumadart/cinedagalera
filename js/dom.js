@@ -34,6 +34,11 @@ const ICONES = {
   marcador: { d: 'M7 4h10v16l-5-4-5 4z' },
   busca: { d: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4' },
   voltar: { d: 'M15 5l-7 7 7 7' },
+  inicio: { d: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10' },
+  grade: { d: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
+  amigos: { d: 'M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.2a3 3 0 010 5.6M18 14.2c2 .6 3.5 2.6 3.5 5.8' },
+  calendario: { d: 'M5 5h14v15H5zM5 10h14M9 3v4M15 3v4' },
+  escudo: { d: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' },
   fechar: { d: 'M6 6l12 12M18 6L6 18' }
 };
 

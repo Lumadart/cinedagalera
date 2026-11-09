@@ -2,11 +2,12 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, aplicarStatusLocal, removerStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
 import {
-  casca, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, ICONE_STATUS, normalizar, tituloMeta
+  casca, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, ICONE_STATUS, normalizar, tituloMeta, CATEGORIAS, rotuloCategoria
 } from '../ui.js';
 
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
-const filtro = { tipo: 'todos', genero: null, busca: '', ordem: 'recentes' };
+const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
+const filtro = { categoria: 'todos', genero: null, busca: '', ordem: 'recentes' };
 
 function fecharMenus() {
   document.querySelectorAll('.menu-status').forEach((m) => {
@@ -56,11 +57,12 @@ export function telaCatalogo({ raiz, ativa }) {
 
   function desenharFiltros() {
     const generos = [...new Set(estado.catalogo.titulos.flatMap((t) => t.generos))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const categorias = Object.keys(CATEGORIAS).filter((c) => estado.catalogo.titulos.some((t) => t.categoria === c));
+    if (filtro.categoria !== 'todos' && !categorias.includes(filtro.categoria)) filtro.categoria = 'todos';
     const mudar = (campo, valor) => () => { filtro[campo] = valor; desenharFiltros(); desenharGrade(); };
     montar(filtrosEl,
-      chip('Todos', filtro.tipo === 'todos', mudar('tipo', 'todos')),
-      chip('Filmes', filtro.tipo === 'filme', mudar('tipo', 'filme')),
-      chip('Séries', filtro.tipo === 'serie', mudar('tipo', 'serie')),
+      chip('Todos', filtro.categoria === 'todos', mudar('categoria', 'todos')),
+      categorias.map((c) => chip(PLURAL[c], filtro.categoria === c, mudar('categoria', c))),
       generos.length ? h('span', { class: 'divisor', 'aria-hidden': 'true' }) : null,
       generos.map((g) => chip(g, filtro.genero === g, mudar('genero', filtro.genero === g ? null : g)))
     );
@@ -74,7 +76,7 @@ export function telaCatalogo({ raiz, ativa }) {
   function listaFiltrada() {
     const busca = normalizar(filtro.busca.trim());
     let lista = estado.catalogo.titulos.filter((t) =>
-      (filtro.tipo === 'todos' || t.tipo === filtro.tipo) &&
+      (filtro.categoria === 'todos' || t.categoria === filtro.categoria) &&
       (!filtro.genero || t.generos.includes(filtro.genero)) &&
       (!busca || normalizar(t.nome).includes(busca))
     );
@@ -126,7 +128,7 @@ export function telaCatalogo({ raiz, ativa }) {
 
     capaBox.append(
       h('a', { class: 'link-capa', href: '#/titulo/' + t.id, 'aria-label': 'Abrir ' + t.nome }, capa(t)),
-      h('span', { class: 'pill-tipo' }, t.tipo === 'filme' ? 'Filme' : 'Série'),
+      h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
       botao
     );
 

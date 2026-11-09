@@ -2,7 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, achaTitulo, statusDe, aplicarStatusLocal, removerStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
 import {
-  casca, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, tituloMeta, formatarNota
+  casca, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, tituloMeta, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria
 } from '../ui.js';
 
 export function telaTitulo({ raiz, ativa, params }) {
@@ -15,7 +15,7 @@ export function telaTitulo({ raiz, ativa, params }) {
       .catch((e) => {
         if (!ativa()) return;
         montar(raiz, casca('catalogo', h('div', { class: 'estado-vazio' },
-          h('p', { class: 'erro' }, e.message), h('a', { class: 'btn-sec', href: '#/' }, 'Voltar ao catálogo'))));
+          h('p', { class: 'erro' }, e.message), h('a', { class: 'btn-sec', href: '#/catalogo' }, 'Voltar ao catálogo'))));
       });
   }
 
@@ -23,10 +23,10 @@ export function telaTitulo({ raiz, ativa, params }) {
     const t = achaTitulo(params.id);
     if (!t) {
       montar(raiz, casca('catalogo', h('div', { class: 'estado-vazio' },
-        h('p', null, 'Não encontramos este título.'), h('a', { class: 'btn-sec', href: '#/' }, 'Voltar ao catálogo'))));
+        h('p', null, 'Não encontramos este título.'), h('a', { class: 'btn-sec', href: '#/catalogo' }, 'Voltar ao catálogo'))));
       return;
     }
-    document.title = t.nome + ' · Cine da galera';
+    document.title = t.nome + ' · Cine Arkham';
 
     const membros = estado.catalogo.membros;
     const linhas = estado.catalogo.status.filter((s) => s.titulo_id === t.id);
@@ -40,15 +40,20 @@ export function telaTitulo({ raiz, ativa, params }) {
     if (t.tipo === 'serie' && t.episodios) detalhes.push(`${t.episodios} episódios`);
 
     const conteudo = h('div', { class: 'pagina-titulo' },
-      h('a', { class: 'voltar', href: '#/' }, icone('voltar', 18), 'Voltar ao catálogo'),
+      h('a', { class: 'voltar', href: '#/catalogo' }, icone('voltar', 18), 'Voltar ao catálogo'),
       h('section', { class: 'ficha' },
         h('div', { class: 'ficha-capa' }, capa(t)),
         h('div', { class: 'ficha-info' },
           h('div', { class: 'linha-pills' },
-            h('span', { class: 'pill-tipo' }, t.tipo === 'filme' ? 'Filme' : 'Série'),
+            h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
             h('span', { class: 'suave' }, [t.ano, ...detalhes].filter(Boolean).join(' · '))
           ),
           h('h1', null, t.nome),
+          h('div', { class: 'notas-titulo' },
+            t.nota_tmdb !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'TMDB'), h('strong', null, '★ ' + formatarNota(t.nota_tmdb))) : null,
+            media !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'Galera'), h('strong', null, '★ ' + formatarNota(media))) : h('span', { class: 'suave pequeno' }, 'A galera ainda não avaliou')
+          ),
+          indicacao(t),
           t.generos.length ? h('div', { class: 'generos' }, t.generos.map((g) => h('span', { class: 'genero' }, g))) : null,
           h('div', { class: 'sinopse' }, h('h2', { class: 'mini' }, 'Sinopse'), h('p', null, t.sinopse || 'Sem sinopse disponível.'))
         )
@@ -56,6 +61,36 @@ export function telaTitulo({ raiz, ativa, params }) {
       h('section', { class: 'duas-colunas' }, painelGrupo(t, linhas, membros, media), painelMeu(t, meu))
     );
     montar(raiz, casca('catalogo', conteudo));
+  }
+
+  function indicacao(t) {
+    const quem = estado.catalogo.membros.find((m) => m.id === t.adicionado_por);
+    const pode = t.adicionado_por === estado.membro.id || estado.membro.admin;
+    return h('div', { class: 'indicacao' },
+      quem ? h('p', null, 'Indicado por ', h('strong', null, quem.nome), t.recado ? ': ' : '', t.recado ? h('em', null, '“' + t.recado + '”') : '') : null,
+      pode ? h('button', { type: 'button', class: 'link-discreto', onclick: (e) => editarTitulo(e.currentTarget.parentElement, t) }, 'Editar categoria e recado') : null
+    );
+  }
+
+  function editarTitulo(caixa, t) {
+    const cat = h('select', { id: 'edit-cat', 'aria-label': 'Categoria' },
+      CATEGORIAS_POR_TIPO[t.tipo].map((c) => h('option', { value: c }, CATEGORIAS[c])));
+    cat.value = t.categoria;
+    const rec = h('input', { id: 'edit-recado', maxlength: '200', value: t.recado, placeholder: 'Recado (opcional)' });
+    const erro = h('p', { class: 'erro', role: 'alert' });
+    montar(caixa, h('form', {
+      class: 'edita', novalidate: true,
+      onsubmit: async (e) => {
+        e.preventDefault();
+        try {
+          const d = await chamar('atualizar_titulo', { titulo_id: t.id, categoria: cat.value, recado: rec.value.trim() });
+          Object.assign(achaTitulo(t.id), d.titulo);
+          avisar('Título atualizado.'); desenhar();
+        } catch (err) { erro.textContent = err.message; }
+      }
+    }, h('label', { for: 'edit-cat' }, 'Categoria', cat), h('label', { for: 'edit-recado' }, 'Recado', rec), erro,
+      h('div', { class: 'linha-botoes' }, h('button', { type: 'submit', class: 'btn-primario' }, 'Salvar'),
+        h('button', { type: 'button', class: 'btn-sec', onclick: desenhar }, 'Cancelar'))));
   }
 
   function painelGrupo(t, linhas, membros, media) {

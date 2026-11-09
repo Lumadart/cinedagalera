@@ -3,4 +3,4 @@
 export const API_URL =
   'https://script.google.com/macros/s/AKfycbxP53VR-thYM34ZGJl3Du17DorReCjuZlzqwslT0VkHTAEAWS8rahleCD0pFiIgQfqs/exec';
 
-export const NOME_DO_GRUPO = 'Cine da galera';
+export const NOME_DO_GRUPO = 'Cine Arkham';

@@ -1,7 +1,7 @@
 import { h, montar } from '../dom.js';
 import { estado } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, capa, avisar, tituloMeta } from '../ui.js';
+import { casca, capa, avisar, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 
 export function telaAdicionar({ raiz, ativa }) {
   const campo = h('input', {
@@ -43,17 +43,22 @@ export function telaAdicionar({ raiz, ativa }) {
 
   function item(r) {
     const acao = h('div', { class: 'resultado-acao' });
+    const cat = h('select', { 'aria-label': 'Categoria de ' + r.nome },
+      CATEGORIAS_POR_TIPO[r.tipo].map((c) => h('option', { value: c }, CATEGORIAS[c])));
+    cat.value = r.categoria;
+    const rec = h('input', { maxlength: '200', placeholder: 'Recado (opcional)', 'aria-label': 'Recado sobre ' + r.nome });
     if (r.ja_no_catalogo) {
       acao.append(h('span', { class: 'suave pequeno' }, 'Já está no catálogo'),
         h('a', { class: 'btn-sec', href: '#/titulo/' + r.titulo_id }, 'Abrir'));
     } else {
+      acao.append(cat, rec);
       const b = h('button', {
         type: 'button', class: 'btn-sec',
         'aria-label': 'Adicionar ' + r.nome + ' ao catálogo',
         onclick: async () => {
           b.disabled = true; b.textContent = 'Adicionando…';
           try {
-            const d = await chamar('adicionar_titulo', { tmdb_id: r.tmdb_id, tipo: r.tipo });
+            const d = await chamar('adicionar_titulo', { tmdb_id: r.tmdb_id, tipo: r.tipo, categoria: cat.value, recado: rec.value.trim() });
             if (estado.catalogo && !estado.catalogo.titulos.some((t) => t.id === d.titulo.id)) {
               estado.catalogo.titulos.unshift(d.titulo);
             }
@@ -71,7 +76,7 @@ export function telaAdicionar({ raiz, ativa }) {
       h('div', { class: 'resultado-capa' }, capa(r)),
       h('div', { class: 'resultado-info' },
         h('strong', null, r.nome),
-        h('span', { class: 'suave pequeno' }, tituloMeta(r)),
+        h('span', { class: 'suave pequeno' }, [rotuloCategoria(r), r.ano].filter(Boolean).join(' · ')),
         r.sinopse ? h('p', { class: 'sinopse-curta' }, r.sinopse) : null
       ),
       acao

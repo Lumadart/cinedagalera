@@ -26,11 +26,12 @@ export function aplicarStatusLocal(membroId, tituloId, campos) {
   if (!estado.catalogo) return;
   const atual = statusDe(membroId, tituloId);
   if (atual) {
-    Object.assign(atual, campos);
+    Object.assign(atual, { atualizado_em: new Date().toISOString() }, campos);
   } else {
     estado.catalogo.status.push({
       membro_id: membroId, titulo_id: tituloId, status: 'quero_ver', nota: null,
-      comentario: '', temporada_atual: null, episodio_atual: null, visto_em: '', ...campos
+      comentario: '', temporada_atual: null, episodio_atual: null, visto_em: '',
+      atualizado_em: new Date().toISOString(), ...campos
     });
   }
 }

@@ -9,6 +9,15 @@ export const COR_STATUS = { quero_ver: 'var(--quer)', assistindo: 'var(--assisti
 export const ORDEM_STATUS = { visto: 0, assistindo: 1, quero_ver: 2 };
 export const ICONE_STATUS = { quero_ver: 'marcador', assistindo: 'play', visto: 'check' };
 
+export const CATEGORIAS = {
+  filme: 'Filme', serie: 'Série', anime: 'Anime', dorama: 'Dorama', reality: 'Reality', documentario: 'Documentário'
+};
+export const CATEGORIAS_POR_TIPO = {
+  filme: ['filme', 'anime', 'documentario'],
+  serie: ['serie', 'anime', 'dorama', 'reality', 'documentario']
+};
+export const rotuloCategoria = (t) => CATEGORIAS[t.categoria] || (t.tipo === 'filme' ? 'Filme' : 'Série');
+
 export function normalizar(texto) {
   return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
@@ -28,7 +37,7 @@ export function formatarNota(n) {
 }
 
 export function tituloMeta(t) {
-  return (t.tipo === 'filme' ? 'Filme' : 'Série') + (t.ano ? ' · ' + t.ano : '');
+  return rotuloCategoria(t) + (t.ano ? ' · ' + t.ano : '');
 }
 
 /** Bolinha do membro: foto, ou iniciais sobre a cor escolhida. `cor` desenha o anel de status. */
@@ -79,24 +88,46 @@ export async function sair() {
   location.hash = '#/entrar';
 }
 
+/** A marca do site: quadrado dourado com um "play". */
+export function marcaLogo() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('class', 'logo'); svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = '<defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F8CF6B"/><stop offset="1" stop-color="#C4821C"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg)"/><path d="M12 9l12 7-12 7z" fill="#2A1500"/>';
+  return svg;
+}
+
+/** Tempo relativo curto: "há 5 min", "há 3 h", "há 2 d". */
+export function haQuanto(iso) {
+  const t = new Date(iso).getTime();
+  if (!t) return '';
+  const min = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} min`;
+  if (min < 1440) return `há ${Math.round(min / 60)} h`;
+  return `há ${Math.round(min / 1440)} d`;
+}
+
 /** A moldura de todas as telas internas: menu lateral, topo e rodapé. */
-export function casca(rota, conteudo, { busca = null } = {}) {
-  const item = (id, href, texto) =>
-    h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, texto);
+export function casca(rota, conteudo, { busca = null, larga = false } = {}) {
+  const item = (id, href, texto, ico) =>
+    h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, icone(ico, 20), h('span', null, texto));
+  const emBreve = (texto, ico) => h('span', { class: 'item desativado', 'aria-disabled': 'true' }, icone(ico, 20), h('span', null, texto), h('small', null, 'em breve'));
   const m = estado.membro;
-  const emBreve = (texto) => h('span', { class: 'item desativado', 'aria-disabled': 'true' }, texto, h('small', null, 'em breve'));
+
   return h('div', { class: 'casca' },
     h('aside', { class: 'menu' },
-      h('a', { class: 'marca', href: '#/' }, h('span', { class: 'logo', 'aria-hidden': 'true' }), NOME_DO_GRUPO),
+      h('a', { class: 'marca', href: '#/' }, marcaLogo(), h('span', null, NOME_DO_GRUPO)),
       h('nav', { class: 'nav', 'aria-label': 'Principal' },
-        item('catalogo', '#/', 'Catálogo'),
-        item('adicionar', '#/adicionar', 'Adicionar título'),
-        m && m.admin ? item('admin', '#/admin', 'Administração') : null,
-        emBreve('Eventos'),
-        emBreve('Minha lista')
+        item('inicio', '#/', 'Início', 'inicio'),
+        item('catalogo', '#/catalogo', 'Catálogo', 'grade'),
+        item('adicionar', '#/adicionar', 'Adicionar título', 'mais'),
+        emBreve('Minha lista', 'marcador'),
+        emBreve('Eventos', 'calendario'),
+        emBreve('Amigos', 'amigos'),
+        m && m.admin ? item('admin', '#/admin', 'Administração', 'escudo') : null
       ),
       h('div', { class: 'menu-rodape' },
-        h('p', { class: 'lema' }, 'Registre. Descubra. Compartilhe.'),
+        h('p', { class: 'lema' }, 'Descubra. Organize. Compartilhe.'),
         h('button', { type: 'button', class: 'btn-sair', onclick: sair }, 'Sair')
       )
     ),
@@ -105,7 +136,7 @@ export function casca(rota, conteudo, { busca = null } = {}) {
         h('div', { class: 'topo-busca' }, busca ? [h('span', { class: 'icone-busca' }, icone('busca', 18)), busca] : null),
         h('div', { class: 'usuario' }, h('span', { class: 'usuario-nome' }, m.nome), avatar(m, { tamanho: 40 }))
       ),
-      h('main', { id: 'conteudo', class: 'conteudo', tabindex: '-1' }, conteudo),
+      h('main', { id: 'conteudo', class: 'conteudo' + (larga ? ' larga' : ''), tabindex: '-1' }, conteudo),
       h('footer', { class: 'rodape-pagina' },
         'Dados e imagens dos títulos: ',
         h('a', { href: 'https://www.themoviedb.org', target: '_blank', rel: 'noopener noreferrer' }, 'TMDB'),

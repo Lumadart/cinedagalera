@@ -3,6 +3,7 @@ import { chamar } from '../api.js';
 import { estado } from '../estado.js';
 import { guardarToken } from '../sessao.js';
 import { NOME_DO_GRUPO } from '../config.js';
+import { marcaLogo } from '../ui.js';
 
 export function telaLogin({ raiz }) {
   let modo = 'entrar'; // 'entrar' ou 'esqueci'
@@ -11,7 +12,7 @@ export function telaLogin({ raiz }) {
   function desenhar() {
     montar(raiz, h('div', { class: 'login' },
       h('section', { class: 'login-marca' },
-        h('div', { class: 'marca-grande' }, h('span', { class: 'logo', 'aria-hidden': 'true' }), NOME_DO_GRUPO),
+        h('div', { class: 'marca-grande' }, marcaLogo(), NOME_DO_GRUPO),
         h('h1', null, 'Nosso catálogo de filmes e séries, em um só lugar.'),
         h('p', null, 'Registre o que viu, acompanhe o que está assistindo e descubra o que a galera quer ver.')
       ),
