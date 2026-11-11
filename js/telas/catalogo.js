@@ -1,6 +1,6 @@
 import { h, montar, icone } from '../dom.js';
-import { estado, carregarCatalogo, aplicarStatusLocal, removerStatusLocal } from '../estado.js';
-import { chamar } from '../api.js';
+import { estado, carregarCatalogo } from '../estado.js';
+import { cartaoTitulo, fecharMenus } from '../cartao.js';
 import {
   casca, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, ICONE_STATUS, normalizar, tituloMeta, CATEGORIAS, rotuloCategoria
 } from '../ui.js';
@@ -8,16 +8,6 @@ import {
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
 const filtro = { categoria: 'todos', genero: null, busca: '', ordem: 'recentes' };
-
-function fecharMenus() {
-  document.querySelectorAll('.menu-status').forEach((m) => {
-    const botao = m.parentElement && m.parentElement.querySelector('.btn-status');
-    if (botao) { botao.setAttribute('aria-expanded', 'false'); }
-    m.remove();
-  });
-}
-document.addEventListener('click', fecharMenus);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharMenus(); });
 
 export function telaCatalogo({ raiz, ativa }) {
   const campoBusca = h('input', {
@@ -90,9 +80,6 @@ export function telaCatalogo({ raiz, ativa }) {
   function desenharGrade() {
     fecharMenus();
     const lista = listaFiltrada();
-    const membros = Object.fromEntries(estado.catalogo.membros.map((m) => [m.id, m]));
-    const porTitulo = {};
-    estado.catalogo.status.forEach((s) => { (porTitulo[s.titulo_id] = porTitulo[s.titulo_id] || []).push(s); });
 
     if (!estado.catalogo.titulos.length) {
       montar(avisoEl, h('p', null, 'O catálogo ainda está vazio.'), h('a', { class: 'btn-primario', href: '#/adicionar' }, 'Adicionar o primeiro título'));
@@ -101,83 +88,7 @@ export function telaCatalogo({ raiz, ativa }) {
     } else {
       montar(avisoEl);
     }
-    montar(gradeEl, lista.map((t) => cartao(t, porTitulo[t.id] || [], membros)));
-  }
-
-  function cartao(t, linhas, membros) {
-    const meu = linhas.find((s) => s.membro_id === estado.membro.id);
-    const cont = { visto: 0, assistindo: 0, quero_ver: 0 };
-    linhas.forEach((s) => { cont[s.status] += 1; });
-    const partes = [];
-    if (cont.visto) partes.push(cont.visto + (cont.visto === 1 ? ' viu' : ' viram'));
-    if (cont.assistindo) partes.push(cont.assistindo + ' assistindo');
-    if (cont.quero_ver) partes.push(cont.quero_ver + (cont.quero_ver === 1 ? ' quer ver' : ' querem ver'));
-
-    const ordenadas = linhas.filter((s) => membros[s.membro_id]).sort((a, b) => ORDEM_STATUS[a.status] - ORDEM_STATUS[b.status]);
-    const mostrados = ordenadas.slice(0, 6);
-    const extra = ordenadas.length - mostrados.length;
-
-    const capaBox = h('div', { class: 'cartao-capa' });
-    const botao = h('button', {
-      type: 'button', class: 'btn-status' + (meu ? ' tem' : ''),
-      'aria-haspopup': 'menu', 'aria-expanded': 'false',
-      'aria-label': meu ? `Meu status em ${t.nome}: ${ROTULOS[meu.status]}. Alterar` : `Marcar ${t.nome} na minha lista`,
-      style: meu ? { borderColor: COR_STATUS[meu.status], color: COR_STATUS[meu.status] } : null,
-      onclick: (e) => { e.stopPropagation(); abrirMenu(botao, capaBox, t, meu); }
-    }, icone(meu ? ICONE_STATUS[meu.status] : 'mais', 22));
-
-    capaBox.append(
-      h('a', { class: 'link-capa', href: '#/titulo/' + t.id, 'aria-label': 'Abrir ' + t.nome }, capa(t)),
-      h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
-      botao
-    );
-
-    return h('article', { class: 'cartao' },
-      capaBox,
-      h('a', { class: 'cartao-titulo', href: '#/titulo/' + t.id }, h('strong', null, t.nome), h('small', null, tituloMeta(t))),
-      mostrados.length ? h('div', { class: 'aneis' },
-        mostrados.map((s) => avatar(membros[s.membro_id], { tamanho: 28, cor: COR_STATUS[s.status], dica: `${membros[s.membro_id].nome}: ${ROTULOS[s.status].toLowerCase()}` })),
-        extra > 0 ? h('span', { class: 'mais-gente' }, '+' + extra) : null
-      ) : null,
-      h('p', { class: 'resumo' }, partes.length ? partes.join(' · ') : 'Ninguém marcou ainda')
-    );
-  }
-
-  function abrirMenu(botao, pai, t, meu) {
-    const jaAberto = pai.querySelector('.menu-status');
-    fecharMenus();
-    if (jaAberto) return;
-    const op = (status) => h('button', {
-      type: 'button', role: 'menuitem', class: 'op' + (meu && meu.status === status ? ' atual' : ''),
-      onclick: (e) => { e.stopPropagation(); definir(t, status); }
-    }, h('span', { class: 'ponto', style: { background: COR_STATUS[status] } }), ROTULOS[status]);
-    const menu = h('div', { class: 'menu-status', role: 'menu', onclick: (e) => e.stopPropagation() },
-      op('quero_ver'), op('assistindo'), op('visto'),
-      meu ? h('button', { type: 'button', role: 'menuitem', class: 'op remover', onclick: (e) => { e.stopPropagation(); remover(t); } }, 'Tirar da minha lista') : null
-    );
-    pai.append(menu);
-    botao.setAttribute('aria-expanded', 'true');
-    menu.querySelector('button').focus();
-  }
-
-  async function definir(t, status) {
-    fecharMenus();
-    try {
-      await chamar('marcar_status', { titulo_id: t.id, status });
-      aplicarStatusLocal(estado.membro.id, t.id, { status, visto_em: status === 'visto' ? new Date().toISOString() : '' });
-      avisar(`“${t.nome}” marcado como ${ROTULOS[status].toLowerCase()}.`);
-      desenharGrade();
-    } catch (e) { avisar(e.message, 'erro'); }
-  }
-
-  async function remover(t) {
-    fecharMenus();
-    try {
-      await chamar('remover_status', { titulo_id: t.id });
-      removerStatusLocal(estado.membro.id, t.id);
-      avisar(`“${t.nome}” saiu da sua lista.`);
-      desenharGrade();
-    } catch (e) { avisar(e.message, 'erro'); }
+    montar(gradeEl, lista.map((t) => cartaoTitulo(t, { aoMudar: desenharGrade })));
   }
 
   if (estado.catalogo) {

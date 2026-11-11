@@ -9,6 +9,27 @@ export const COR_STATUS = { quero_ver: 'var(--quer)', assistindo: 'var(--assisti
 export const ORDEM_STATUS = { visto: 0, assistindo: 1, quero_ver: 2 };
 export const ICONE_STATUS = { quero_ver: 'marcador', assistindo: 'play', visto: 'check' };
 
+export const BANNERS = {
+  ameixa: 'linear-gradient(120deg, #6a3a63, #2a1a2a)',
+  ouro: 'linear-gradient(120deg, #c4821c, #4a2b47)',
+  noite: 'linear-gradient(120deg, #1b101b, #5a4163)',
+  aurora: 'linear-gradient(120deg, #3d2840, #2f6a63)',
+  vinho: 'linear-gradient(120deg, #8a2b47, #2a1520)'
+};
+export const CORES_AVATAR = ['#F5B942', '#EE8E62', '#A3BCA6', '#C9A0DC', '#E37B9B', '#7FB7D6', '#F8EAD8', '#D96B5F'];
+
+/** O banner de um perfil: foto enviada, ou um degradê escolhido, ou o padrão. */
+export function banner(membro) {
+  const el = h('div', { class: 'banner', style: { background: BANNERS[membro.banner_preset] || BANNERS.ameixa } });
+  const foto = seguro(membro.banner_url);
+  if (foto) {
+    const img = h('img', { src: foto, alt: '', referrerpolicy: 'no-referrer' });
+    img.addEventListener('error', () => img.remove());
+    el.append(img);
+  }
+  return el;
+}
+
 export const CATEGORIAS = {
   filme: 'Filme', serie: 'Série', anime: 'Anime', dorama: 'Dorama', reality: 'Reality', documentario: 'Documentário'
 };
@@ -57,6 +78,12 @@ export function avatar(membro, { tamanho = 36, cor = null, dica = null } = {}) {
     el.append(img);
   }
   return el;
+}
+
+/** Imagem em paisagem (TMDB backdrop). Se o título não tiver, usa a capa. */
+export function fundoImg(titulo, classe = 'fundo-img') {
+  const src = seguro(titulo.fundo_url) || seguro(titulo.capa_url);
+  return src ? h('img', { class: classe, src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null;
 }
 
 export function capa(titulo) {
@@ -121,9 +148,9 @@ export function casca(rota, conteudo, { busca = null, larga = false } = {}) {
         item('inicio', '#/', 'Início', 'inicio'),
         item('catalogo', '#/catalogo', 'Catálogo', 'grade'),
         item('adicionar', '#/adicionar', 'Adicionar título', 'mais'),
-        emBreve('Minha lista', 'marcador'),
+        item('perfil', '#/perfil', 'Meu perfil', 'marcador'),
+        item('amigos', '#/amigos', 'Amigos', 'amigos'),
         emBreve('Eventos', 'calendario'),
-        emBreve('Amigos', 'amigos'),
         m && m.admin ? item('admin', '#/admin', 'Administração', 'escudo') : null
       ),
       h('div', { class: 'menu-rodape' },
@@ -134,7 +161,7 @@ export function casca(rota, conteudo, { busca = null, larga = false } = {}) {
     h('div', { class: 'principal' },
       h('header', { class: 'topo' },
         h('div', { class: 'topo-busca' }, busca ? [h('span', { class: 'icone-busca' }, icone('busca', 18)), busca] : null),
-        h('div', { class: 'usuario' }, h('span', { class: 'usuario-nome' }, m.nome), avatar(m, { tamanho: 40 }))
+        h('a', { class: 'usuario', href: '#/perfil', 'aria-label': 'Meu perfil' }, h('span', { class: 'usuario-nome' }, m.nome), avatar(m, { tamanho: 40 }))
       ),
       h('main', { id: 'conteudo', class: 'conteudo' + (larga ? ' larga' : ''), tabindex: '-1' }, conteudo),
       h('footer', { class: 'rodape-pagina' },
