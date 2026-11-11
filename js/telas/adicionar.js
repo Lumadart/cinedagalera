@@ -1,7 +1,7 @@
 import { h, montar } from '../dom.js';
 import { estado } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, capa, avisar, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
+import { casca, capa, avisar, detalheTitulo, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 
 export function telaAdicionar({ raiz, ativa }) {
   const campo = h('input', {
@@ -11,22 +11,37 @@ export function telaAdicionar({ raiz, ativa }) {
   const botao = h('button', { type: 'submit', class: 'btn-primario' }, 'Buscar');
   const saida = h('div', { class: 'resultados' });
 
+  let numero = 0;      // só a busca mais recente pode mexer na tela
+  let espera = null;
+  const lembrados = new Map(); // buscas já feitas nesta tela
+  async function buscar(q) {
+    const meu = ++numero;
+    if (lembrados.has(q)) { mostrar(lembrados.get(q), q); return; }
+    montar(saida, h('p', { class: 'suave', role: 'status' }, 'Buscando…'));
+    try {
+      const d = await chamar('buscar_tmdb', { q });
+      if (!ativa() || meu !== numero) return;
+      lembrados.set(q, d.resultados);
+      mostrar(d.resultados, q);
+    } catch (err) {
+      if (ativa() && meu === numero) montar(saida, h('p', { class: 'erro', role: 'alert' }, err.message));
+    }
+  }
+  campo.addEventListener('input', () => {
+    clearTimeout(espera);
+    const q = campo.value.trim();
+    if (q.length < 2) { numero++; montar(saida); return; }
+    espera = setTimeout(() => buscar(q), 350); // espera a pessoa parar de digitar
+  });
+
   const form = h('form', {
     class: 'busca-form', novalidate: true,
-    onsubmit: async (e) => {
+    onsubmit: (e) => {
       e.preventDefault();
+      clearTimeout(espera);
       const q = campo.value.trim();
       if (q.length < 2) { montar(saida, h('p', { class: 'erro', role: 'alert' }, 'Digite pelo menos 2 letras.')); return; }
-      botao.disabled = true; botao.textContent = 'Buscando…';
-      montar(saida, h('p', { class: 'suave' }, 'Buscando…'));
-      try {
-        const d = await chamar('buscar_tmdb', { q });
-        if (!ativa()) return;
-        mostrar(d.resultados, q);
-      } catch (err) {
-        if (ativa()) montar(saida, h('p', { class: 'erro', role: 'alert' }, err.message));
-      }
-      botao.disabled = false; botao.textContent = 'Buscar';
+      buscar(q);
     }
   }, campo, botao);
 

@@ -121,7 +121,14 @@ export function telaTitulo({ raiz, ativa, params }) {
               s ? h('span', { class: 'pill-status', style: { color: cor, borderColor: cor } }, ROTULOS[s.status]) : h('span', { class: 'suave' }, 'Ainda não marcou'),
               prog ? h('span', { class: 'suave' }, prog) : null
             ),
-            s && s.comentario ? h('p', { class: 'comentario' }, s.comentario) : null
+            ...(s && s.comentario ? [h('p', { class: 'comentario' }, s.comentario),
+              estado.membro.admin && m.id !== estado.membro.id ? h('button', { type: 'button', class: 'link-discreto', onclick: async (e) => {
+                if (!confirm('Apagar este comentário? A nota é mantida.')) return;
+                try {
+                  await chamar('admin_limpar_comentario', { titulo_id: t.id, membro_id: m.id });
+                  s.comentario = ''; const p = e.target.previousElementSibling; if (p) p.remove(); e.target.remove(); avisar('Comentário apagado.');
+                } catch (err) { avisar(err.message, 'erro'); }
+              } }, 'Apagar comentário (moderação)') : null] : [])
           ),
           s && s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null
         );

@@ -1,0 +1,3 @@
+Coloque aqui a imagem do menu lateral com o nome menu.png (também pode ser JPG renomeado para menu.png).
+Tamanho recomendado: 440 x 300 px (proporção 3 para 2). Ela aparece na parte de baixo do menu lateral.
+Se o arquivo não existir, o site mostra só um espaço vazio com borda tracejada.

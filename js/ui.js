@@ -1,5 +1,5 @@
 import { h, icone } from './dom.js';
-import { estado } from './estado.js';
+import { estado, limparCatalogo } from './estado.js';
 import { chamar } from './api.js';
 import { apagarToken } from './sessao.js';
 import { NOME_DO_GRUPO } from './config.js';
@@ -111,7 +111,7 @@ export async function sair() {
   try { await chamar('sair'); } catch (_) { /* sai mesmo se o servidor não responder */ }
   apagarToken();
   estado.membro = null;
-  estado.catalogo = null;
+  limparCatalogo();
   location.hash = '#/entrar';
 }
 
@@ -156,7 +156,7 @@ function buscaTopo(aoBuscar) {
 function menuImagem() {
   const caixa = h('div', { class: 'menu-imagem' });
   const img = h('img', { src: 'img/menu.png', alt: '' });
-  img.addEventListener('error', () => { img.remove(); caixa.classList.add('vazia'); caixa.append(h('span', null, 'Espaço para imagem')); });
+  img.addEventListener('error', () => { caixa.remove(); }); // sem imagem, o espaço fica vazio
   caixa.append(img);
   return caixa;
 }
@@ -197,4 +197,18 @@ export function casca(rota, conteudo, { aoBuscar = null } = {}) {
       )
     )
   );
+}
+
+
+/** "2h05" para filmes; "3 temp. · 24 eps" para séries. Vazio se o TMDB não informou. */
+export function detalheTitulo(t) {
+  if (t.tipo === 'filme') {
+    if (!t.duracao_min) return '';
+    const hh = Math.floor(t.duracao_min / 60), mm = t.duracao_min % 60;
+    return hh ? `${hh}h${String(mm).padStart(2, '0')}` : `${mm} min`;
+  }
+  const p = [];
+  if (t.temporadas) p.push(t.temporadas + (t.temporadas === 1 ? ' temp.' : ' temps.'));
+  if (t.episodios) p.push(t.episodios + (t.episodios === 1 ? ' ep.' : ' eps.'));
+  return p.join(' · ');
 }

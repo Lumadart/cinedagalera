@@ -1,7 +1,7 @@
 import { h, montar } from '../dom.js';
-import { estado } from '../estado.js';
+import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, avatar, avisar } from '../ui.js';
+import { casca, avatar, avisar, capa, normalizar, rotuloCategoria } from '../ui.js';
 
 function quando(iso) {
   if (!iso) return 'nunca';
@@ -15,16 +15,104 @@ export function telaAdmin({ raiz, ativa }) {
       h('p', null, 'Esta área é só para admins.'), h('a', { class: 'btn-sec', href: '#/' }, 'Voltar ao catálogo'))));
     return;
   }
-  const area = h('div', { class: 'admin' }, h('p', { class: 'suave' }, 'Carregando…'));
+  const area = h('div', { class: 'admin' });
+  const painel = h('div', { class: 'admin-painel' }, h('p', { class: 'suave' }, 'Carregando…'));
+  const ABAS = [['membros', 'Membros'], ['titulos', 'Títulos'], ['manutencao', 'Manutenção e histórico']];
+  let aba = 'membros';
+  const abasEl = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Áreas da administração' });
+  function pintarAbas() {
+    montar(abasEl, ABAS.map(([k, r]) => h('button', { type: 'button', role: 'tab', class: 'aba' + (aba === k ? ' ligada' : ''), 'aria-selected': String(aba === k),
+      onclick: () => { aba = k; pintarAbas(); abrir(); } }, r)));
+  }
+  montar(area,
+    h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Administração'), h('p', { class: 'suave' }, 'Membros, correções no catálogo e histórico de alterações.'))),
+    abasEl, painel);
   montar(raiz, casca('admin', area));
-  carregar();
+  pintarAbas(); abrir();
+
+  function abrir() {
+    if (aba === 'membros') carregar();
+    else if (aba === 'titulos') abaTitulos();
+    else abaManutencao();
+  }
+
+  // ---------- Títulos: corrigir o catálogo ----------
+  async function abaTitulos(busca = '') {
+    montar(painel, h('p', { class: 'suave' }, 'Carregando…'));
+    try { await carregarCatalogo({ forcar: true }); } catch (e) { if (ativa()) montar(painel, h('p', { class: 'erro' }, e.message)); return; }
+    if (!ativa()) return;
+    const campo = h('input', { type: 'search', placeholder: 'Buscar título no catálogo…', 'aria-label': 'Buscar título', value: busca, autocomplete: 'off' });
+    const lista = h('ul', { class: 'lista-adm' });
+    const pintar = () => {
+      const q = normalizar(campo.value.trim());
+      const itens = estado.catalogo.titulos.filter((t) => !q || normalizar(t.nome).includes(q)).slice(0, 40);
+      const porMembro = Object.fromEntries(estado.catalogo.membros.map((m) => [m.id, m]));
+      montar(lista, itens.length ? itens.map((t) => {
+        const marcacoes = estado.catalogo.status.filter((x) => x.titulo_id === t.id).length;
+        const por = porMembro[t.adicionado_por];
+        return h('li', { class: 'membro-adm' },
+          h('span', { class: 'mini-capa' }, capa(t)),
+          h('div', { class: 'membro-info' },
+            h('strong', null, t.nome), h('div', { class: 'suave pequeno' }, [rotuloCategoria(t), t.ano, por ? 'indicado por ' + por.nome : null].filter(Boolean).join(' · ')),
+            h('div', { class: 'suave pequeno' }, `${marcacoes} ${marcacoes === 1 ? 'marcação' : 'marcações'}`)),
+          h('div', { class: 'acoes' },
+            h('a', { class: 'btn-sec', href: '#/titulo/' + t.id }, 'Abrir'),
+            h('button', { type: 'button', class: 'btn-sec', onclick: async (e) => {
+              e.target.disabled = true;
+              try {
+                const r = await chamar('admin_atualizar_titulo_tmdb', { titulo_id: t.id });
+                Object.assign(t, r.titulo); avisar(`“${t.nome}” atualizado com os dados do TMDB.`); pintar();
+              } catch (err) { avisar(err.message, 'erro'); e.target.disabled = false; }
+            } }, 'Atualizar do TMDB'),
+            h('button', { type: 'button', class: 'btn-sec perigo', onclick: async () => {
+              if (!confirm(`Remover “${t.nome}” do catálogo? Isso apaga também as marcações, notas, comentários e favoritos deste título. Não dá para desfazer.`)) return;
+              try {
+                await chamar('admin_remover_titulo', { titulo_id: t.id });
+                await carregarCatalogo({ forcar: true }); avisar('Título removido.'); pintar();
+              } catch (err) { avisar(err.message, 'erro'); }
+            } }, 'Remover')));
+      }) : h('li', { class: 'suave' }, 'Nenhum título encontrado.'));
+    };
+    campo.addEventListener('input', pintar);
+    montar(painel,
+      h('p', { class: 'suave' }, 'Corrija dados vindos do TMDB ou remova indicações erradas. Para mudar a categoria ou o recado, abra o título.'),
+      campo, lista);
+    pintar();
+  }
+
+  // ---------- Manutenção e histórico ----------
+  async function abaManutencao() {
+    const resultado = h('p', { class: 'suave', role: 'status' });
+    const limpar = h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
+      limpar.disabled = true;
+      try {
+        const r = await chamar('admin_limpar_orfaos');
+        resultado.textContent = r.marcacoes + r.favoritos ? `Removidos: ${r.marcacoes} marcações e ${r.favoritos} favoritos sem dono ou sem título.` : 'Está tudo em ordem. Nada para limpar.';
+        await carregarCatalogo({ forcar: true });
+      } catch (e) { resultado.textContent = e.message; }
+      limpar.disabled = false;
+    } }, 'Limpar registros órfãos');
+    const logEl = h('div', null, h('p', { class: 'suave' }, 'Carregando histórico…'));
+    montar(painel,
+      h('section', { class: 'card' }, h('h2', null, 'Manutenção'),
+        h('p', { class: 'suave' }, 'Remove marcações e favoritos que apontam para títulos ou pessoas que não existem mais (sobras de limpezas manuais na planilha).'),
+        limpar, resultado),
+      h('section', { class: 'card' }, h('h2', null, 'Histórico de ações de admin'), logEl));
+    try {
+      const { log } = await chamar('admin_listar_log');
+      if (!ativa()) return;
+      montar(logEl, log.length ? h('ul', { class: 'log-adm' }, log.map((l) =>
+        h('li', null, h('span', { class: 'suave pequeno' }, quando(l.data)), h('span', null, h('strong', null, l.admin), ' · ' + l.acao.replaceAll('_', ' ') + (l.detalhes ? ' — ' + l.detalhes : '')))))
+        : h('p', { class: 'suave' }, 'Nenhuma ação registrada ainda.'));
+    } catch (e) { montar(logEl, h('p', { class: 'erro' }, e.message)); }
+  }
 
   async function carregar() {
     try {
       const d = await chamar('admin_listar_membros');
-      if (ativa()) desenhar(d);
+      if (ativa() && aba === 'membros') desenhar(d);
     } catch (e) {
-      if (ativa()) montar(area, h('p', { class: 'erro' }, e.message),
+      if (ativa()) montar(painel, h('p', { class: 'erro' }, e.message),
         h('button', { type: 'button', class: 'btn-sec', onclick: carregar }, 'Tentar de novo'));
     }
   }
@@ -97,13 +185,10 @@ export function telaAdmin({ raiz, ativa }) {
       );
     };
 
-    montar(area,
-      h('div', { class: 'titulo-linha' },
-        h('div', null, h('h1', null, 'Administração'), h('p', { class: 'suave' }, 'Gerencie quem participa do grupo.')),
-        h('div', { class: 'contagens' },
-          h('span', null, `${limites.membros_ativos} de ${limites.max_membros} membros`),
-          h('span', null, `${limites.admins_ativos} de ${limites.max_admins} admins`))
-      ),
+    montar(painel,
+      h('div', { class: 'contagens' },
+        h('span', null, `${limites.membros_ativos} de ${limites.max_membros} membros`),
+        h('span', null, `${limites.admins_ativos} de ${limites.max_admins} admins`)),
       form,
       h('ul', { class: 'lista-adm' }, membros.map(linha))
     );

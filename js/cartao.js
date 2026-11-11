@@ -1,7 +1,7 @@
 import { h, icone } from './dom.js';
 import { estado, aplicarStatusLocal, removerStatusLocal } from './estado.js';
 import { chamar } from './api.js';
-import { avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, rotuloCategoria } from './ui.js';
+import { avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, rotuloCategoria, detalheTitulo } from './ui.js';
 
 export function fecharMenus() {
   document.querySelectorAll('.menu-status').forEach((m) => {
@@ -41,7 +41,7 @@ export function cartaoTitulo(t, { aoMudar }) {
   capaBox.append(
     h('a', { class: 'link-capa', href: '#/titulo/' + t.id, 'aria-label': 'Abrir ' + t.nome }, capa(t),
       h('span', { class: 'sombra' }),
-      h('span', { class: 'nome-sobre' }, h('strong', null, t.nome), h('small', null, t.ano || ''))),
+      h('span', { class: 'nome-sobre' }, h('strong', null, t.nome), h('small', null, [t.ano, detalheTitulo(t)].filter(Boolean).join(' · ')))),
     h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
     ...(meu ? [h('span', { class: 'fita', style: { color: COR_STATUS[meu.status] }, title: ROTULOS[meu.status] })] : []),
     botao

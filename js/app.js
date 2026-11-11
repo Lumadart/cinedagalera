@@ -1,5 +1,5 @@
 import { chamar } from './api.js';
-import { estado } from './estado.js';
+import { estado, carregarCatalogo, limparCatalogo } from './estado.js';
 import { lerToken } from './sessao.js';
 import { h, montar } from './dom.js';
 import { avisar } from './ui.js';
@@ -48,7 +48,7 @@ function rotear() {
 
 function sessaoExpirou() {
   estado.membro = null;
-  estado.catalogo = null;
+  limparCatalogo();
   avisar('Sua sessão expirou. Entre novamente.', 'erro');
   if (location.hash !== '#/entrar') location.hash = '#/entrar';
   else rotear();
@@ -57,6 +57,7 @@ function sessaoExpirou() {
 async function iniciar() {
   if (lerToken()) {
     try {
+      carregarCatalogo().catch(() => {}); // em paralelo com o "eu", para a primeira tela chegar mais rápido
       estado.membro = (await chamar('eu')).membro;
     } catch (e) {
       if (e.codigo !== 'sessao') {

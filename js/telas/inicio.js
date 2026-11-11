@@ -7,6 +7,7 @@ import { casca, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, CATEGORIAS,
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
 let filtroCat = 'todos';
+let faixaModo = 'recentes'; // 'recentes' | 'queridos'
 let slideAtual = 0; // lembra o destaque ao redesenhar a tela
 
 export function telaInicio({ raiz, ativa }) {
@@ -28,8 +29,8 @@ export function telaInicio({ raiz, ativa }) {
     const quem = Object.fromEntries(membros.map((m) => [m.id, m]));
     const recentes = titulos.slice().sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     montar(conteudo,
-      h('div', { class: 'inicio-principal' }, hero(recentes.slice(0, 5), quem), continuar(porId), catalogo(recentes)),
-      h('aside', { class: 'inicio-lateral' }, atividade(titulos, status, porId, quem), minhaLista(porId), chamada())
+      h('div', { class: 'inicio-principal' }, hero(recentes.slice(0, 5), quem), faixa(titulos, recentes), catalogo(recentes)),
+      h('aside', { class: 'inicio-lateral' }, assistindo(porId), minhaLista(porId), atividade(titulos, status, porId, quem))
     );
   }
 
@@ -92,23 +93,31 @@ export function telaInicio({ raiz, ativa }) {
     return caixa;
   }
 
-  function continuar(porId) {
+  function faixa(titulos, recentes) {
+    if (!titulos.length) return null;
+    const querem = (t) => estado.catalogo.status.filter((x) => x.titulo_id === t.id && x.status === 'quero_ver').length;
+    const lista = faixaModo === 'queridos'
+      ? titulos.filter((t) => querem(t) > 0).sort((a, b) => querem(b) - querem(a) || String(b.criado_em).localeCompare(String(a.criado_em))).slice(0, 8)
+      : recentes.slice(0, 8);
+    const aba = (id, texto) => h('button', { type: 'button', class: 'chip' + (faixaModo === id ? ' ligado' : ''), 'aria-pressed': String(faixaModo === id), onclick: () => { faixaModo = id; desenhar(); } }, texto);
+    return h('section', { class: 'bloco-home' },
+      h('div', { class: 'titulo-secao' }, h('h2', null, faixaModo === 'queridos' ? 'Mais querem ver' : 'Últimos adicionados'),
+        h('div', { class: 'filtros' }, aba('recentes', 'Últimos adicionados'), aba('queridos', 'Mais querem ver'))),
+      lista.length ? h('div', { class: 'faixa' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar })))
+        : h('p', { class: 'suave' }, 'Ninguém marcou “quero ver” ainda.'));
+  }
+
+  function assistindo(porId) {
     const meus = estado.catalogo.status
       .filter((s) => s.membro_id === estado.membro.id && s.status === 'assistindo' && porId[s.titulo_id])
-      .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em)));
-    if (!meus.length) return null;
-    return h('section', { class: 'bloco-home' },
+      .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em))).slice(0, 3);
+    return h('section', { class: 'card lateral' },
       h('div', { class: 'titulo-secao' }, h('h2', null, 'Está assistindo'), h('a', { href: '#/perfil' }, 'Ver todos →')),
-      h('div', { class: 'linha-cards' }, meus.slice(0, 4).map((s) => {
+      meus.length ? h('ul', { class: 'mini-lista' }, meus.map((s) => {
         const t = porId[s.titulo_id];
-        const serie = t.tipo === 'serie';
-        const prog = serie && s.temporada_atual && s.episodio_atual ? `T${s.temporada_atual} · Ep. ${s.episodio_atual}` : (serie ? 'Sem episódio marcado' : 'Em andamento');
-        const pct = serie && t.temporadas === 1 && t.episodios && s.episodio_atual ? Math.min(100, Math.round((s.episodio_atual / t.episodios) * 100)) : null;
-        return h('a', { class: 'card-continuar', href: '#/titulo/' + t.id },
-          fundoImg(t), h('span', { class: 'sombra' }),
-          h('span', { class: 'cc-texto' }, h('strong', null, t.nome), h('small', null, prog)),
-          pct !== null ? h('span', { class: 'barra', role: 'img', 'aria-label': pct + '% assistido' }, h('span', { style: { width: pct + '%' } })) : null);
-      })));
+        const prog = t.tipo === 'serie' && s.temporada_atual && s.episodio_atual ? `T${s.temporada_atual} · Ep. ${s.episodio_atual}` : rotuloCategoria(t);
+        return h('li', null, h('a', { href: '#/titulo/' + t.id }, h('span', { class: 'mini-capa' }, capa(t)), h('span', null, h('strong', null, t.nome), h('small', null, prog))));
+      })) : h('p', { class: 'suave' }, 'Nada em andamento. Marque um título como “assistindo”.'));
   }
 
   function catalogo(recentes) {
@@ -145,12 +154,5 @@ export function telaInicio({ raiz, ativa }) {
       meus.length ? h('ul', { class: 'mini-lista' }, meus.map((s) => { const t = porId[s.titulo_id];
         return h('li', null, h('a', { href: '#/titulo/' + t.id }, h('span', { class: 'mini-capa' }, capa(t)), h('span', null, h('strong', null, t.nome), h('small', null, rotuloCategoria(t) + (t.ano ? ' · ' + t.ano : ''))))); }))
         : h('p', { class: 'suave' }, 'Use o “+” nos títulos para montar sua lista.'));
-  }
-
-  function chamada() {
-    return h('section', { class: 'card lateral chamada' },
-      h('h2', null, h('span', { class: 'ouro' }, '★'), ' Indique um título'),
-      h('p', { class: 'suave' }, 'Achou algo bom? Coloque no catálogo e conte para a galera por que vale a pena.'),
-      h('a', { class: 'btn-primario', href: '#/adicionar' }, 'Começar agora'));
   }
 }

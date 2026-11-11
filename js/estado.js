@@ -7,10 +7,21 @@ export const estado = {
   filtro: { categoria: 'todos', genero: null, busca: '', ordem: 'recentes' }  // do catálogo; a busca do topo também usa
 };
 
-export async function carregarCatalogo() {
-  estado.catalogo = await chamar('catalogo');
-  return estado.catalogo;
+let carregadoEm = 0;
+let emVoo = null;
+const FRESCO_MS = 45000; // dentro desse prazo, trocar de tela não refaz a consulta
+
+/** Busca o catálogo. Sem `forcar`, reaproveita o que já está na memória se for recente. */
+export function carregarCatalogo({ forcar = false } = {}) {
+  if (!forcar && estado.catalogo && Date.now() - carregadoEm < FRESCO_MS) return Promise.resolve(estado.catalogo);
+  if (emVoo) return emVoo;
+  emVoo = chamar('catalogo').then((d) => {
+    estado.catalogo = d; carregadoEm = Date.now(); return d;
+  }).finally(() => { emVoo = null; });
+  return emVoo;
 }
+
+export function limparCatalogo() { estado.catalogo = null; carregadoEm = 0; emVoo = null; }
 
 export function achaTitulo(id) {
   return estado.catalogo ? estado.catalogo.titulos.find((t) => t.id === id) : undefined;

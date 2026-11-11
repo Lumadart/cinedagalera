@@ -22,7 +22,9 @@ export function telaEditarPerfil({ raiz, ativa }) {
   function desenhar() {
     const eu = estado.membro;
     const previa = h('div', { class: 'previa' });
-    const pintarPrevia = () => montar(previa, banner(eu), h('div', { class: 'previa-avatar' }, avatar(eu, { tamanho: 84, cor: 'var(--ouro)' })));
+    const pintarPrevia = () => montar(previa,
+      h('label', { class: 'editavel editavel-banner', for: 'foto-banner', title: 'Trocar banner' }, banner(eu), h('span', { class: 'editavel-dica' }, icone('editar', 18), 'Trocar banner')),
+      h('label', { class: 'editavel editavel-avatar', for: 'foto-avatar', title: 'Trocar foto do perfil' }, avatar(eu, { tamanho: 92, cor: 'var(--ouro)' }), h('span', { class: 'editavel-dica' }, icone('editar', 18))));
     pintarPrevia();
 
     // ---- fotos
@@ -40,7 +42,7 @@ export function telaEditarPerfil({ raiz, ativa }) {
       } catch (err) { erroFoto.textContent = err.message; }
     };
     const arquivoAvatar = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'sr-only', id: 'foto-avatar', onchange: enviar('avatar', 400, 400) });
-    const arquivoBanner = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'sr-only', id: 'foto-banner', onchange: enviar('banner', 1500, 300) });
+    const arquivoBanner = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'sr-only', id: 'foto-banner', onchange: enviar('banner', 1600, 400) });
 
     // ---- dados
     const nome = h('input', { id: 'nome', maxlength: '40', value: eu.nome });
@@ -85,15 +87,51 @@ export function telaEditarPerfil({ raiz, ativa }) {
     const contador = h('p', { class: 'suave pequeno', role: 'status' });
 
     function mover(i, d) { const j = i + d; if (j < 0 || j >= escolhidos.length) return; [escolhidos[i], escolhidos[j]] = [escolhidos[j], escolhidos[i]]; pintarFav(); }
+    // arrastar com o cursor (ponteiro: funciona com mouse e toque)
+    function arrastar(e, i, cartao) {
+      if (e.button !== undefined && e.button > 0) return;
+      const itens = [...selecionados.children];
+      const caixas = itens.map((el) => el.getBoundingClientRect());
+      const ini = { x: e.clientX, y: e.clientY };
+      let alvo = i, movendo = false;
+      cartao.setPointerCapture(e.pointerId);
+      const mexer = (ev) => {
+        const dx = ev.clientX - ini.x, dy = ev.clientY - ini.y;
+        if (!movendo && Math.hypot(dx, dy) < 6) return;
+        movendo = true; cartao.classList.add('arrastando');
+        cartao.style.transform = `translate(${dx}px, ${dy}px) scale(1.05)`;
+        const idx = caixas.findIndex((c) => ev.clientX >= c.left && ev.clientX <= c.right && ev.clientY >= c.top && ev.clientY <= c.bottom);
+        alvo = idx >= 0 ? idx : alvo;
+        itens.forEach((el, k) => el.classList.toggle('alvo', movendo && k === alvo && k !== i));
+      };
+      const soltar = () => {
+        cartao.removeEventListener('pointermove', mexer);
+        cartao.removeEventListener('pointerup', soltar);
+        cartao.removeEventListener('pointercancel', soltar);
+        if (movendo && alvo !== i) { const [x] = escolhidos.splice(i, 1); escolhidos.splice(alvo, 0, x); }
+        pintarFav();
+      };
+      cartao.addEventListener('pointermove', mexer);
+      cartao.addEventListener('pointerup', soltar);
+      cartao.addEventListener('pointercancel', soltar);
+    }
     function pintarFav() {
       const porId = Object.fromEntries(estado.catalogo.titulos.map((t) => [t.id, t]));
-      contador.textContent = `${escolhidos.length} de 5 escolhidos` + (escolhidos.length < 3 ? ' (mínimo 3)' : '');
+      contador.textContent = `${escolhidos.length} de 5 escolhidos` + (escolhidos.length < 3 ? ' (mínimo 3)' : '') + (escolhidos.length > 1 ? ' · arraste para reordenar' : '');
       salvarFav.disabled = escolhidos.length < 3 || escolhidos.length > 5;
-      montar(selecionados, escolhidos.map((id, i) => h('li', null,
-        h('span', { class: 'posicao-fav' }, String(i + 1)), h('span', { class: 'fav-nome' }, porId[id].nome),
-        h('button', { type: 'button', class: 'link-discreto', 'aria-label': 'Subir ' + porId[id].nome, onclick: () => mover(i, -1) }, '↑'),
-        h('button', { type: 'button', class: 'link-discreto', 'aria-label': 'Descer ' + porId[id].nome, onclick: () => mover(i, 1) }, '↓'),
-        h('button', { type: 'button', class: 'link-discreto', 'aria-label': 'Remover ' + porId[id].nome, onclick: () => { escolhidos = escolhidos.filter((x) => x !== id); pintarFav(); } }, 'remover'))));
+      montar(selecionados, escolhidos.map((id, i) => {
+        const cartao = h('li', { class: 'fav-card', tabindex: '0', 'aria-label': `${i + 1}º favorito: ${porId[id].nome}. Setas para a esquerda e direita reordenam.`,
+          onpointerdown: (e) => { if (e.target.closest('button')) return; arrastar(e, i, cartao); },
+          onkeydown: (e) => {
+            if (e.key === 'ArrowLeft') { e.preventDefault(); mover(i, -1); selecionados.children[Math.max(0, i - 1)].focus(); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); mover(i, 1); selecionados.children[Math.min(escolhidos.length - 1, i + 1)].focus(); }
+          } },
+          h('span', { class: 'posicao-fav' }, String(i + 1)),
+          capa(porId[id]),
+          h('span', { class: 'fav-nome' }, porId[id].nome),
+          h('button', { type: 'button', class: 'fav-x', 'aria-label': 'Remover ' + porId[id].nome, onclick: () => { escolhidos = escolhidos.filter((x) => x !== id); pintarFav(); } }, '×'));
+        return cartao;
+      }));
       const q = normalizar(busca.value.trim());
       const lista = estado.catalogo.titulos.filter((t) => !escolhidos.includes(t.id) && (!q || normalizar(t.nome).includes(q))).slice(0, 24);
       montar(opcoes, lista.length ? lista.map((t) => h('button', { type: 'button', class: 'fav-opcao', disabled: escolhidos.length >= 5, 'aria-label': 'Adicionar ' + t.nome + ' aos favoritos',
@@ -103,14 +141,8 @@ export function telaEditarPerfil({ raiz, ativa }) {
 
     const cartaoFotos = h('section', { class: 'card' },
       h('h2', null, 'Fotos'),
-      previa,
-      h('div', { class: 'linha-botoes' },
-        h('label', { class: 'btn-sec', for: 'foto-avatar' }, 'Trocar foto do perfil'), arquivoAvatar,
-        h('label', { class: 'btn-sec', for: 'foto-banner' }, 'Trocar banner'), arquivoBanner),
-      h('ul', { class: 'dicas-imagem' },
-        h('li', null, h('strong', null, 'Foto do perfil: '), 'quadrada, 400 × 400 px.'),
-        h('li', null, h('strong', null, 'Banner: '), 'bem larga, 1500 × 300 px (proporção 5 para 1).'),
-        h('li', null, 'Formatos JPG, PNG ou WebP, de até 15 MB. Depois de escolher o arquivo, você enquadra a imagem arrastando e usando o zoom; ela é reduzida para o tamanho certo automaticamente.')),
+      previa, arquivoAvatar, arquivoBanner,
+      h('p', { class: 'dica-fina' }, 'Passe o mouse sobre a imagem e clique para trocar. Foto: 400×400 · Banner: 1600×400 · JPG, PNG ou WebP. Você enquadra antes de enviar.'),
       erroFoto);
     const cartaoFavs = h('section', { class: 'card form-edicao' },
       h('h2', null, 'Títulos favoritos'),

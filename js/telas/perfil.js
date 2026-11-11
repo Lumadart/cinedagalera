@@ -61,17 +61,18 @@ export function telaPerfil({ raiz, ativa, params }) {
     montar(area,
       h('section', { class: 'perfil-topo' },
         banner(m),
+        h('span', { class: 'perfil-veu' }),
+        meu ? h('a', { class: 'btn-lapis', href: '#/perfil/editar', 'aria-label': 'Editar perfil', title: 'Editar perfil' }, icone('editar', 16)) : null,
         h('div', { class: 'perfil-id' },
-          avatar(m, { tamanho: 120, cor: 'var(--ouro)' }),
-          h('div', { class: 'perfil-nome' }, h('h1', null, m.nome), m.frase ? h('p', { class: 'frase' }, '“' + m.frase + '”') : null),
-          h('div', { class: 'estatisticas' }, [[de('visto').length, 'vistos'], [de('assistindo').length, 'assistindo'], [de('quero_ver').length, 'quero ver'], [indicados.length, 'indicações']].map(([n, r]) =>
-            h('div', null, h('strong', null, String(n)), h('span', { class: 'suave pequeno' }, r)))),
-          meu ? h('a', { class: 'btn-contorno', href: '#/perfil/editar' }, icone('editar', 18), 'Editar perfil') : null)),
-      h('section', { class: 'favoritos-destaque', 'aria-labelledby': 'tit-fav' },
-        h('div', { class: 'titulo-secao' }, h('h2', { id: 'tit-fav' }, h('span', { class: 'ouro' }, '★'), ' Favoritos'),
-          meu ? h('a', { href: '#/perfil/editar' }, favs.length ? 'Alterar' : 'Escolher de 3 a 5 títulos') : null),
-        favs.length ? h('div', { class: 'grade-favs' }, favs.map((t, i) => poster(t, null, i + 1)))
-          : vazio(meu ? 'Você ainda não escolheu seus favoritos.' : 'Ainda sem favoritos.')),
+          avatar(m, { tamanho: 112, cor: 'var(--ouro)' }),
+          h('div', { class: 'perfil-nome' },
+            h('h1', null, m.nome), m.frase ? h('p', { class: 'frase' }, '“' + m.frase + '”') : null,
+            h('div', { class: 'estatisticas' }, [[de('visto').length, 'vistos'], [de('assistindo').length, 'assistindo'], [de('quero_ver').length, 'quero ver'], [indicados.length, 'indicações']].map(([n, r]) =>
+              h('div', null, h('strong', null, String(n)), h('span', null, r))))),
+          h('div', { class: 'perfil-favs', 'aria-label': 'Favoritos' },
+            h('span', { class: 'perfil-favs-rotulo' }, h('span', { class: 'ouro' }, '★'), ' Favoritos'),
+            favs.length ? h('div', { class: 'mini-favs' }, favs.map((t) => h('a', { href: '#/titulo/' + t.id, title: t.nome, 'aria-label': t.nome }, capa(t))))
+              : h('span', { class: 'pequeno' }, meu ? h('a', { href: '#/perfil/editar' }, 'Escolher favoritos') : 'Sem favoritos')))),
       h('div', { class: 'perfil-corpo' },
         h('div', { class: 'perfil-principal' }, tabs, h('div', { class: 'painel-aba', role: 'tabpanel' }, paineis[aba]())),
         h('aside', { class: 'card lateral' },
