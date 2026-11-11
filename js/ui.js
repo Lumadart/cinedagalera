@@ -134,8 +134,35 @@ export function haQuanto(iso) {
   return `há ${Math.round(min / 1440)} d`;
 }
 
+/** Busca do topo: no catálogo filtra na hora; nas outras telas, Enter leva ao catálogo já filtrado. */
+function buscaTopo(aoBuscar) {
+  const campo = h('input', {
+    type: 'search', id: 'busca', name: 'q', autocomplete: 'off', placeholder: 'Buscar filmes, séries, animes…',
+    'aria-label': 'Buscar no catálogo', value: estado.filtro.busca,
+    oninput: aoBuscar ? (e) => { estado.filtro.busca = e.target.value; aoBuscar(); } : null
+  });
+  return h('form', {
+    class: 'topo-busca', role: 'search',
+    onsubmit: (e) => {
+      e.preventDefault();
+      estado.filtro.busca = campo.value.trim();
+      if (location.hash !== '#/catalogo') location.hash = '#/catalogo';
+      else if (aoBuscar) aoBuscar();
+    }
+  }, h('span', { class: 'icone-busca' }, icone('busca', 18)), campo);
+}
+
+/** Espaço no fim do menu para uma imagem do grupo (coloque o arquivo em img/menu.png). */
+function menuImagem() {
+  const caixa = h('div', { class: 'menu-imagem' });
+  const img = h('img', { src: 'img/menu.png', alt: '' });
+  img.addEventListener('error', () => { img.remove(); caixa.classList.add('vazia'); caixa.append(h('span', null, 'Espaço para imagem')); });
+  caixa.append(img);
+  return caixa;
+}
+
 /** A moldura de todas as telas internas: menu lateral, topo e rodapé. */
-export function casca(rota, conteudo, { busca = null, larga = false } = {}) {
+export function casca(rota, conteudo, { aoBuscar = null } = {}) {
   const item = (id, href, texto, ico) =>
     h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, icone(ico, 20), h('span', null, texto));
   const emBreve = (texto, ico) => h('span', { class: 'item desativado', 'aria-disabled': 'true' }, icone(ico, 20), h('span', null, texto), h('small', null, 'em breve'));
@@ -153,17 +180,16 @@ export function casca(rota, conteudo, { busca = null, larga = false } = {}) {
         emBreve('Eventos', 'calendario'),
         m && m.admin ? item('admin', '#/admin', 'Administração', 'escudo') : null
       ),
-      h('div', { class: 'menu-rodape' },
-        h('p', { class: 'lema' }, 'Descubra. Organize. Compartilhe.'),
-        h('button', { type: 'button', class: 'btn-sair', onclick: sair }, 'Sair')
-      )
+      menuImagem()
     ),
     h('div', { class: 'principal' },
       h('header', { class: 'topo' },
-        h('div', { class: 'topo-busca' }, busca ? [h('span', { class: 'icone-busca' }, icone('busca', 18)), busca] : null),
-        h('a', { class: 'usuario', href: '#/perfil', 'aria-label': 'Meu perfil' }, h('span', { class: 'usuario-nome' }, m.nome), avatar(m, { tamanho: 40 }))
+        buscaTopo(aoBuscar),
+        h('div', { class: 'usuario' },
+          h('a', { class: 'usuario-link', href: '#/perfil', 'aria-label': 'Meu perfil' }, h('span', { class: 'usuario-nome' }, m.nome), avatar(m, { tamanho: 40 })),
+          h('button', { type: 'button', class: 'btn-sair', onclick: sair, 'aria-label': 'Sair da conta', title: 'Sair da conta' }, icone('sair', 18)))
       ),
-      h('main', { id: 'conteudo', class: 'conteudo' + (larga ? ' larga' : ''), tabindex: '-1' }, conteudo),
+      h('main', { id: 'conteudo', class: 'conteudo', tabindex: '-1' }, conteudo),
       h('footer', { class: 'rodape-pagina' },
         'Dados e imagens dos títulos: ',
         h('a', { href: 'https://www.themoviedb.org', target: '_blank', rel: 'noopener noreferrer' }, 'TMDB'),

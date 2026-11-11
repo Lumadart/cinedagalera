@@ -17,7 +17,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharMenu
 export function cartaoTitulo(t, { aoMudar }) {
   const { status, membros } = estado.catalogo;
   const porMembro = Object.fromEntries(membros.map((m) => [m.id, m]));
-  const linhas = status.filter((s) => s.titulo_id === t.id);
+  const linhas = status.filter((s) => s.titulo_id === t.id && porMembro[s.membro_id]);
   const meu = linhas.find((s) => s.membro_id === estado.membro.id);
   const cont = { visto: 0, assistindo: 0, quero_ver: 0 };
   linhas.forEach((s) => { cont[s.status] += 1; });

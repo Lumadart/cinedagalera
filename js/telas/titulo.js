@@ -2,7 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, achaTitulo, statusDe, aplicarStatusLocal, removerStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
 import {
-  casca, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, tituloMeta, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria
+  casca, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, tituloMeta, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria
 } from '../ui.js';
 
 export function telaTitulo({ raiz, ativa, params }) {
@@ -29,7 +29,8 @@ export function telaTitulo({ raiz, ativa, params }) {
     document.title = t.nome + ' · Cine Arkham';
 
     const membros = estado.catalogo.membros;
-    const linhas = estado.catalogo.status.filter((s) => s.titulo_id === t.id);
+    const ativos = new Set(membros.map((m) => m.id));
+    const linhas = estado.catalogo.status.filter((s) => s.titulo_id === t.id && ativos.has(s.membro_id));
     const meu = statusDe(estado.membro.id, t.id);
     const notas = linhas.filter((s) => s.status === 'visto' && s.nota !== null).map((s) => s.nota);
     const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
@@ -42,6 +43,7 @@ export function telaTitulo({ raiz, ativa, params }) {
     const conteudo = h('div', { class: 'pagina-titulo' },
       h('a', { class: 'voltar', href: '#/catalogo' }, icone('voltar', 18), 'Voltar ao catálogo'),
       h('section', { class: 'ficha' },
+        fundoImg(t, 'ficha-fundo'),
         h('div', { class: 'ficha-capa' }, capa(t)),
         h('div', { class: 'ficha-info' },
           h('div', { class: 'linha-pills' },
@@ -49,13 +51,15 @@ export function telaTitulo({ raiz, ativa, params }) {
             h('span', { class: 'suave' }, [t.ano, ...detalhes].filter(Boolean).join(' · '))
           ),
           h('h1', null, t.nome),
-          h('div', { class: 'notas-titulo' },
-            t.nota_tmdb !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'TMDB'), h('strong', null, '★ ' + formatarNota(t.nota_tmdb))) : null,
-            media !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'Galera'), h('strong', null, '★ ' + formatarNota(media))) : h('span', { class: 'suave pequeno' }, 'A galera ainda não avaliou')
-          ),
-          indicacao(t),
           t.generos.length ? h('div', { class: 'generos' }, t.generos.map((g) => h('span', { class: 'genero' }, g))) : null,
           h('div', { class: 'sinopse' }, h('h2', { class: 'mini' }, 'Sinopse'), h('p', null, t.sinopse || 'Sem sinopse disponível.'))
+        ),
+        h('aside', { class: 'ficha-lado' },
+          h('div', { class: 'notas-titulo' },
+            t.nota_tmdb !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'Nota TMDB'), h('strong', null, '★ ' + formatarNota(t.nota_tmdb))) : null,
+            media !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'Média da galera'), h('strong', null, '★ ' + formatarNota(media))) : h('span', { class: 'nota-bloco' }, h('small', null, 'Média da galera'), h('span', { class: 'suave pequeno' }, 'sem notas ainda'))
+          ),
+          indicacao(t)
         )
       ),
       h('section', { class: 'duas-colunas' }, painelGrupo(t, linhas, membros, media), painelMeu(t, meu))

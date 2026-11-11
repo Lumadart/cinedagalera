@@ -7,10 +7,11 @@ import { casca, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, CATEGORIAS,
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
 let filtroCat = 'todos';
+let slideAtual = 0; // lembra o destaque ao redesenhar a tela
 
 export function telaInicio({ raiz, ativa }) {
   const conteudo = h('div', { class: 'inicio' }, h('p', { class: 'suave' }, 'Carregando…'));
-  montar(raiz, casca('inicio', conteudo, { larga: true }));
+  montar(raiz, casca('inicio', conteudo));
   let timer = null;
 
   if (estado.catalogo) desenhar();
@@ -28,22 +29,22 @@ export function telaInicio({ raiz, ativa }) {
     const recentes = titulos.slice().sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     montar(conteudo,
       h('div', { class: 'inicio-principal' }, hero(recentes.slice(0, 5), quem), continuar(porId), catalogo(recentes)),
-      h('aside', { class: 'inicio-lateral' }, galera(membros), atividade(titulos, status, porId, quem), minhaLista(porId), chamada())
+      h('aside', { class: 'inicio-lateral' }, atividade(titulos, status, porId, quem), minhaLista(porId), chamada())
     );
   }
 
   function hero(slides, quem) {
     if (!slides.length) {
       return h('section', { class: 'hero vazio' },
-        h('div', { class: 'hero-texto' },
+        h('div', { class: 'slide ativo' }, h('div', { class: 'hero-texto' },
           h('h1', null, 'Descubra, compartilhe e monte ', h('span', { class: 'ouro' }, 'sua lista!')),
-          h('p', null, 'Busque um filme, série, anime ou dorama e indique o primeiro título da galera.'),
-          h('a', { class: 'btn-primario', href: '#/adicionar' }, icone('busca', 18), 'Adicionar título')));
+          h('p', { class: 'hero-sinopse' }, 'Busque um filme, série, anime ou dorama e indique o primeiro título da galera.'),
+          h('a', { class: 'btn-primario', href: '#/adicionar' }, icone('busca', 18), 'Adicionar título'))));
     }
-    let atual = 0;
+    if (slideAtual >= slides.length) slideAtual = 0;
     const caixa = h('section', { class: 'hero', 'aria-roledescription': 'carrossel', 'aria-label': 'Últimas indicações' });
-    function pintar() {
-      const t = slides[atual];
+    const pontos = [];
+    const fatias = slides.map((t) => {
       const indicador = quem[t.adicionado_por];
       const meu = estado.catalogo.status.find((s) => s.membro_id === estado.membro.id && s.titulo_id === t.id);
       const botaoLista = h('button', {
@@ -57,24 +58,35 @@ export function telaInicio({ raiz, ativa }) {
           } catch (e) { avisar(e.message, 'erro'); botaoLista.disabled = false; }
         }
       }, icone(meu ? 'check' : 'mais', 20));
-      montar(caixa,
+      return h('div', { class: 'slide' },
         fundoImg(t, 'hero-fundo'),
         h('div', { class: 'hero-texto' },
           h('span', { class: 'etiqueta ouro-etq' }, 'Em destaque'),
           h('h1', null, t.nome),
           h('p', { class: 'hero-meta' }, [rotuloCategoria(t), t.ano, t.nota_tmdb !== null ? '★ ' + String(t.nota_tmdb).replace('.', ',') : null].filter(Boolean).join(' · ')),
           h('p', { class: 'hero-sinopse' }, t.recado ? `“${t.recado}” — indicado por ${indicador ? indicador.nome : 'alguém da galera'}` : (t.sinopse || '')),
-          h('div', { class: 'hero-acoes' }, h('a', { class: 'btn-primario', href: '#/titulo/' + t.id }, icone('play', 18), 'Ver ficha'), botaoLista)),
-        slides.length > 1 ? h('div', { class: 'pontos-hero', role: 'group', 'aria-label': 'Escolher destaque' },
-          slides.map((_, i) => h('button', { type: 'button', class: i === atual ? 'ligado' : '', 'aria-label': 'Destaque ' + (i + 1), 'aria-current': i === atual ? 'true' : null,
-            onclick: () => { atual = i; pintar(); } }))) : null);
+          h('div', { class: 'hero-acoes' }, h('a', { class: 'btn-primario', href: '#/titulo/' + t.id }, icone('play', 18), 'Ver ficha'), botaoLista)));
+    });
+    function mostrar(i) {
+      slideAtual = i;
+      fatias.forEach((f, k) => {
+        f.classList.toggle('ativo', k === i);
+        f.setAttribute('aria-hidden', k === i ? 'false' : 'true');
+        if (k === i) f.removeAttribute('inert'); else f.setAttribute('inert', '');
+      });
+      pontos.forEach((b, k) => { b.classList.toggle('ligado', k === i); b.setAttribute('aria-current', k === i ? 'true' : 'false'); });
     }
-    pintar();
+    caixa.append(...fatias);
+    if (slides.length > 1) {
+      caixa.append(h('div', { class: 'pontos-hero', role: 'group', 'aria-label': 'Escolher destaque' },
+        slides.map((_, i) => { const b = h('button', { type: 'button', 'aria-label': 'Destaque ' + (i + 1), onclick: () => mostrar(i) }); pontos.push(b); return b; })));
+    }
+    mostrar(slideAtual);
     if (slides.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       timer = setInterval(() => {
         if (!ativa() || !document.contains(caixa)) { clearInterval(timer); return; }
         if (caixa.matches(':hover, :focus-within')) return;
-        atual = (atual + 1) % slides.length; pintar();
+        mostrar((slideAtual + 1) % slides.length);
       }, 8000);
     }
     return caixa;
@@ -86,7 +98,7 @@ export function telaInicio({ raiz, ativa }) {
       .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em)));
     if (!meus.length) return null;
     return h('section', { class: 'bloco-home' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, 'Continue assistindo'), h('a', { href: '#/perfil' }, 'Ver todos →')),
+      h('div', { class: 'titulo-secao' }, h('h2', null, 'Está assistindo'), h('a', { href: '#/perfil' }, 'Ver todos →')),
       h('div', { class: 'linha-cards' }, meus.slice(0, 4).map((s) => {
         const t = porId[s.titulo_id];
         const serie = t.tipo === 'serie';
@@ -109,13 +121,6 @@ export function telaInicio({ raiz, ativa }) {
         h('div', { class: 'filtros' }, pill('todos', 'Todos'), presentes.map((c) => pill(c, PLURAL[c])))),
       lista.length ? h('div', { class: 'grade' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar }))) : h('p', { class: 'suave' }, 'Ainda não há títulos.'),
       recentes.length > 10 ? h('p', { class: 'ver-tudo' }, h('a', { class: 'btn-sec', href: '#/catalogo' }, 'Ver o catálogo completo')) : null);
-  }
-
-  function galera(membros) {
-    return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, icone('amigos', 20), ' Seus amigos'), h('a', { href: '#/amigos' }, 'Ver todos →')),
-      h('ul', { class: 'galera-lista' }, membros.slice(0, 5).map((m) =>
-        h('li', null, h('a', { href: '#/perfil/' + m.id }, avatar(m, { tamanho: 42 }), h('span', null, h('strong', null, m.nome), m.frase ? h('small', null, m.frase) : null))))));
   }
 
   function atividade(titulos, status, porId, quem) {

@@ -7,14 +7,9 @@ import {
 
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
-const filtro = { categoria: 'todos', genero: null, busca: '', ordem: 'recentes' };
+const filtro = estado.filtro;
 
 export function telaCatalogo({ raiz, ativa }) {
-  const campoBusca = h('input', {
-    type: 'search', id: 'busca', 'aria-label': 'Buscar no catálogo', placeholder: 'Buscar no catálogo…',
-    value: filtro.busca, autocomplete: 'off',
-    oninput: (e) => { filtro.busca = e.target.value; desenharGrade(); }
-  });
   const filtrosEl = h('div', { class: 'filtros' });
   const legendaEl = h('div', { class: 'legenda' });
   const gradeEl = h('div', { class: 'grade' });
@@ -39,7 +34,7 @@ export function telaCatalogo({ raiz, ativa }) {
     ),
     filtrosEl, legendaEl, avisoEl, gradeEl
   );
-  montar(raiz, casca('catalogo', conteudo, { busca: campoBusca }));
+  montar(raiz, casca('catalogo', conteudo, { aoBuscar: desenharGrade }));
 
   function chip(texto, ligado, aoClicar) {
     return h('button', { type: 'button', class: 'chip' + (ligado ? ' ligado' : ''), 'aria-pressed': ligado ? 'true' : 'false', onclick: aoClicar }, texto);

@@ -3,7 +3,8 @@ import { chamar } from './api.js';
 // Dados que o site mantém em memória enquanto está aberto.
 export const estado = {
   membro: null,    // quem está logado
-  catalogo: null   // { titulos, membros, status, favoritos }
+  catalogo: null,  // { titulos, membros, status, favoritos }
+  filtro: { categoria: 'todos', genero: null, busca: '', ordem: 'recentes' }  // do catálogo; a busca do topo também usa
 };
 
 export async function carregarCatalogo() {

@@ -1,8 +1,8 @@
-import { h, montar } from '../dom.js';
+import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
-import { prepararImagem } from '../imagem.js';
-import { casca, avatar, banner, avisar, capa, normalizar, BANNERS, CORES_AVATAR } from '../ui.js';
+import { ajustarImagem } from '../imagem.js';
+import { casca, avatar, banner, avisar, capa, normalizar, sair } from '../ui.js';
 
 export function telaEditarPerfil({ raiz, ativa }) {
   const area = h('div', { class: 'editar' }, h('p', { class: 'suave' }, 'Carregando…'));
@@ -16,7 +16,7 @@ export function telaEditarPerfil({ raiz, ativa }) {
   function aplicar(membro) {
     Object.assign(estado.membro, membro);
     const x = estado.catalogo.membros.find((m) => m.id === membro.id);
-    if (x) Object.assign(x, { nome: membro.nome, frase: membro.frase, avatar_cor: membro.avatar_cor, avatar_url: membro.avatar_url, banner_url: membro.banner_url, banner_preset: membro.banner_preset });
+    if (x) Object.assign(x, { nome: membro.nome, frase: membro.frase, avatar_url: membro.avatar_url, banner_url: membro.banner_url, banner_preset: membro.banner_preset });
   }
 
   function desenhar() {
@@ -32,30 +32,19 @@ export function telaEditarPerfil({ raiz, ativa }) {
       if (!arquivo) return;
       erroFoto.textContent = '';
       try {
+        const dataUrl = await ajustarImagem(arquivo, largura, altura, { circulo: tipo === 'avatar', titulo: tipo === 'avatar' ? 'Ajustar foto do perfil' : 'Ajustar banner' });
+        if (!dataUrl) return;
         avisar('Enviando a imagem…');
-        const dataUrl = await prepararImagem(arquivo, largura, altura);
         const d = await chamar('enviar_foto', { tipo, base64: dataUrl });
         aplicar(d.membro); pintarPrevia(); avisar('Imagem atualizada!');
       } catch (err) { erroFoto.textContent = err.message; }
     };
     const arquivoAvatar = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'sr-only', id: 'foto-avatar', onchange: enviar('avatar', 400, 400) });
-    const arquivoBanner = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'sr-only', id: 'foto-banner', onchange: enviar('banner', 1200, 400) });
+    const arquivoBanner = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'sr-only', id: 'foto-banner', onchange: enviar('banner', 1500, 300) });
 
     // ---- dados
     const nome = h('input', { id: 'nome', maxlength: '40', value: eu.nome });
     const frase = h('input', { id: 'frase', maxlength: '120', value: eu.frase || '', placeholder: 'Uma frase para o seu perfil' });
-    let cor = eu.avatar_cor;
-    const botoesCor = CORES_AVATAR.map((c) => h('button', { type: 'button', class: 'amostra', style: { background: c }, 'aria-label': 'Cor ' + c, 'aria-pressed': String(c === cor), onclick: () => { cor = c; botoesCor.forEach((b) => b.setAttribute('aria-pressed', String(b === botaoDe(c)))); eu.avatar_cor = c; pintarPrevia(); } }));
-    const botaoDe = (c) => botoesCor[CORES_AVATAR.indexOf(c)];
-    let preset = eu.banner_preset;
-    const botoesPreset = Object.entries(BANNERS).map(([k, g]) => h('button', { type: 'button', class: 'amostra larga', style: { background: g }, 'aria-label': 'Degradê ' + k, 'aria-pressed': String(!eu.banner_url && k === preset),
-      onclick: async () => {
-        try {
-          const d = await chamar('atualizar_perfil', { banner_preset: k });
-          aplicar(d.membro); preset = k; pintarPrevia();
-          botoesPreset.forEach((b) => b.setAttribute('aria-pressed', String(b === botoesPreset[Object.keys(BANNERS).indexOf(k)])));
-        } catch (err) { erroFoto.textContent = err.message; }
-      } }));
     const erroDados = h('p', { class: 'erro', role: 'alert' });
     const salvar = h('button', { type: 'submit', class: 'btn-primario' }, 'Salvar dados');
     const formDados = h('form', {
@@ -64,7 +53,7 @@ export function telaEditarPerfil({ raiz, ativa }) {
         e.preventDefault(); erroDados.textContent = '';
         salvar.disabled = true; salvar.textContent = 'Salvando…';
         try {
-          const d = await chamar('atualizar_perfil', { nome: nome.value.trim(), frase: frase.value.trim(), avatar_cor: cor });
+          const d = await chamar('atualizar_perfil', { nome: nome.value.trim(), frase: frase.value.trim() });
           aplicar(d.membro); pintarPrevia(); avisar('Perfil salvo!');
         } catch (err) { erroDados.textContent = err.message; }
         salvar.disabled = false; salvar.textContent = 'Salvar dados';
@@ -73,7 +62,6 @@ export function telaEditarPerfil({ raiz, ativa }) {
       h('h2', null, 'Dados do perfil'),
       h('label', { for: 'nome' }, 'Nome', nome),
       h('label', { for: 'frase' }, 'Frase', frase),
-      h('div', null, h('p', { class: 'rotulo' }, 'Cor do avatar (aparece quando você não tem foto)'), h('div', { class: 'amostras' }, botoesCor)),
       erroDados, salvar);
 
     // ---- favoritos
@@ -113,23 +101,31 @@ export function telaEditarPerfil({ raiz, ativa }) {
     }
     pintarFav();
 
+    const cartaoFotos = h('section', { class: 'card' },
+      h('h2', null, 'Fotos'),
+      previa,
+      h('div', { class: 'linha-botoes' },
+        h('label', { class: 'btn-sec', for: 'foto-avatar' }, 'Trocar foto do perfil'), arquivoAvatar,
+        h('label', { class: 'btn-sec', for: 'foto-banner' }, 'Trocar banner'), arquivoBanner),
+      h('ul', { class: 'dicas-imagem' },
+        h('li', null, h('strong', null, 'Foto do perfil: '), 'quadrada, 400 × 400 px.'),
+        h('li', null, h('strong', null, 'Banner: '), 'bem larga, 1500 × 300 px (proporção 5 para 1).'),
+        h('li', null, 'Formatos JPG, PNG ou WebP, de até 15 MB. Depois de escolher o arquivo, você enquadra a imagem arrastando e usando o zoom; ela é reduzida para o tamanho certo automaticamente.')),
+      erroFoto);
+    const cartaoFavs = h('section', { class: 'card form-edicao' },
+      h('h2', null, 'Títulos favoritos'),
+      h('p', { class: 'suave' }, 'Escolha de 3 a 5 títulos do catálogo. A ordem aparece no seu perfil.'),
+      estado.catalogo.titulos.length < 3 ? h('p', { class: 'suave' }, 'O catálogo ainda tem menos de 3 títulos. Adicione mais para escolher seus favoritos.') : null,
+      selecionados, contador, busca, opcoes, erroFav, salvarFav);
+    const cartaoSessao = h('section', { class: 'card sessao' },
+      h('div', null, h('h2', null, 'Sessão'), h('p', { class: 'suave pequeno' }, 'Sair deste aparelho. Para entrar de novo você usa o e-mail e o PIN.')),
+      h('button', { type: 'button', class: 'btn-sec', onclick: sair }, icone('sair', 18), 'Sair da conta'));
+
     montar(area,
       h('a', { class: 'voltar', href: '#/perfil' }, 'Voltar ao perfil'),
       h('h1', null, 'Editar perfil'),
-      h('section', { class: 'card' },
-        h('h2', null, 'Fotos'),
-        previa,
-        h('div', { class: 'linha-botoes' },
-          h('label', { class: 'btn-sec', for: 'foto-avatar' }, 'Trocar foto do avatar'), arquivoAvatar,
-          h('label', { class: 'btn-sec', for: 'foto-banner' }, 'Trocar banner'), arquivoBanner),
-        h('div', null, h('p', { class: 'rotulo' }, 'Ou escolha um degradê para o banner'), h('div', { class: 'amostras' }, botoesPreset)),
-        h('p', { class: 'suave pequeno' }, 'JPG, PNG ou WebP. A imagem é recortada e reduzida automaticamente.'), erroFoto),
-      formDados,
-      h('section', { class: 'card form-edicao' },
-        h('h2', null, 'Títulos favoritos'),
-        h('p', { class: 'suave' }, 'Escolha de 3 a 5 títulos do catálogo. A ordem aparece no seu perfil.'),
-        estado.catalogo.titulos.length < 3 ? h('p', { class: 'suave' }, 'O catálogo ainda tem menos de 3 títulos. Adicione mais para escolher seus favoritos.') : null,
-        selecionados, contador, busca, opcoes, erroFav, salvarFav)
-    );
+      h('div', { class: 'editar-grade' },
+        h('div', { class: 'coluna' }, cartaoFotos, formDados, cartaoSessao),
+        h('div', { class: 'coluna' }, cartaoFavs)));
   }
 }
