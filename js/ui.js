@@ -4,10 +4,10 @@ import { chamar } from './api.js';
 import { apagarToken } from './sessao.js';
 import { NOME_DO_GRUPO } from './config.js';
 
-export const ROTULOS = { quero_ver: 'Quero ver', assistindo: 'Assistindo', visto: 'Visto' };
-export const COR_STATUS = { quero_ver: 'var(--quer)', assistindo: 'var(--assistindo)', visto: 'var(--ouro)' };
-export const ORDEM_STATUS = { visto: 0, assistindo: 1, quero_ver: 2 };
-export const ICONE_STATUS = { quero_ver: 'marcador', assistindo: 'play', visto: 'check' };
+export const ROTULOS = { quero_ver: 'Quero ver', assistindo: 'Assistindo', visto: 'Visto', abandonado: 'Abandonado' };
+export const COR_STATUS = { quero_ver: 'var(--quer)', assistindo: 'var(--assistindo)', visto: 'var(--ouro)', abandonado: 'var(--abandonou)' };
+export const ORDEM_STATUS = { visto: 0, assistindo: 1, quero_ver: 2, abandonado: 3 };
+export const ICONE_STATUS = { quero_ver: 'marcador', assistindo: 'play', visto: 'check', abandonado: 'fechar' };
 
 export const BANNERS = {
   ameixa: 'linear-gradient(120deg, #6a3a63, #2a1a2a)',

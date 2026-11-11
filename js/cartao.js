@@ -19,11 +19,12 @@ export function cartaoTitulo(t, { aoMudar }) {
   const porMembro = Object.fromEntries(membros.map((m) => [m.id, m]));
   const linhas = status.filter((s) => s.titulo_id === t.id && porMembro[s.membro_id]);
   const meu = linhas.find((s) => s.membro_id === estado.membro.id);
-  const cont = { visto: 0, assistindo: 0, quero_ver: 0 };
+  const cont = { visto: 0, assistindo: 0, quero_ver: 0, abandonado: 0 };
   linhas.forEach((s) => { cont[s.status] += 1; });
   const partes = [];
   if (cont.visto) partes.push(cont.visto + (cont.visto === 1 ? ' viu' : ' viram'));
   if (cont.assistindo) partes.push(cont.assistindo + ' assistindo');
+  if (cont.abandonado) partes.push(cont.abandonado + (cont.abandonado === 1 ? ' abandonou' : ' abandonaram'));
   if (cont.quero_ver) partes.push(cont.quero_ver + (cont.quero_ver === 1 ? ' quer ver' : ' querem ver'));
   const ordenadas = linhas.filter((s) => porMembro[s.membro_id]).sort((a, b) => ORDEM_STATUS[a.status] - ORDEM_STATUS[b.status]);
   const mostrados = ordenadas.slice(0, 5);
@@ -36,7 +37,7 @@ export function cartaoTitulo(t, { aoMudar }) {
     'aria-label': meu ? `Meu status em ${t.nome}: ${ROTULOS[meu.status]}. Alterar` : `Marcar ${t.nome} na minha lista`,
     style: meu ? { borderColor: COR_STATUS[meu.status], color: COR_STATUS[meu.status] } : null,
     onclick: (e) => { e.stopPropagation(); abrirMenu(); }
-  }, icone(meu ? { visto: 'check', assistindo: 'play', quero_ver: 'marcador' }[meu.status] : 'mais', 20));
+  }, icone(meu ? { visto: 'check', assistindo: 'play', quero_ver: 'marcador', abandonado: 'fechar' }[meu.status] : 'mais', 20));
 
   capaBox.append(
     h('a', { class: 'link-capa', href: '#/titulo/' + t.id, 'aria-label': 'Abrir ' + t.nome }, capa(t),
@@ -56,7 +57,7 @@ export function cartaoTitulo(t, { aoMudar }) {
       onclick: (e) => { e.stopPropagation(); definir(st); }
     }, h('span', { class: 'ponto', style: { background: COR_STATUS[st] } }), ROTULOS[st]);
     const menu = h('div', { class: 'menu-status', role: 'menu', onclick: (e) => e.stopPropagation() },
-      op('quero_ver'), op('assistindo'), op('visto'),
+      op('quero_ver'), op('assistindo'), op('visto'), op('abandonado'),
       ...(meu ? [h('button', { type: 'button', role: 'menuitem', class: 'op remover', onclick: (e) => { e.stopPropagation(); remover(); } }, 'Tirar da minha lista')] : []));
     capaBox.append(menu);
     botao.setAttribute('aria-expanded', 'true');

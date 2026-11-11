@@ -32,7 +32,7 @@ export function telaTitulo({ raiz, ativa, params }) {
     const ativos = new Set(membros.map((m) => m.id));
     const linhas = estado.catalogo.status.filter((s) => s.titulo_id === t.id && ativos.has(s.membro_id));
     const meu = statusDe(estado.membro.id, t.id);
-    const notas = linhas.filter((s) => s.status === 'visto' && s.nota !== null).map((s) => s.nota);
+    const notas = linhas.filter((s) => s.status !== 'quero_ver' && s.nota !== null).map((s) => s.nota);
     const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
 
     const detalhes = [];
@@ -51,6 +51,7 @@ export function telaTitulo({ raiz, ativa, params }) {
             h('span', { class: 'suave' }, [t.ano, ...detalhes].filter(Boolean).join(' · '))
           ),
           h('h1', null, t.nome),
+          ...nomesExtras(t),
           t.generos.length ? h('div', { class: 'generos' }, t.generos.map((g) => h('span', { class: 'genero' }, g))) : null,
           h('div', { class: 'sinopse' }, h('h2', { class: 'mini' }, 'Sinopse'), h('p', null, t.sinopse || 'Sem sinopse disponível.'))
         ),
@@ -67,12 +68,19 @@ export function telaTitulo({ raiz, ativa, params }) {
     montar(raiz, casca('catalogo', conteudo));
   }
 
+  function nomesExtras(t) {
+    const linhasNomes = [];
+    if (t.titulo_original) linhasNomes.push(h('p', { class: 'nome-extra' }, h('span', null, 'Título original'), t.titulo_original));
+    if (t.outros_titulos && t.outros_titulos.length) linhasNomes.push(h('p', { class: 'nome-extra' }, h('span', null, 'Também chamado de'), t.outros_titulos.join(' · ')));
+    return linhasNomes;
+  }
+
   function indicacao(t) {
     const quem = estado.catalogo.membros.find((m) => m.id === t.adicionado_por);
     const pode = t.adicionado_por === estado.membro.id || estado.membro.admin;
     return h('div', { class: 'indicacao' },
       quem ? h('p', null, 'Indicado por ', h('strong', null, quem.nome), t.recado ? ': ' : '', t.recado ? h('em', null, '“' + t.recado + '”') : '') : null,
-      pode ? h('button', { type: 'button', class: 'link-discreto', onclick: (e) => editarTitulo(e.currentTarget.parentElement, t) }, 'Editar categoria e recado') : null
+      pode ? h('button', { type: 'button', class: 'btn-mini', title: 'Editar categoria e recado', 'aria-label': 'Editar categoria e recado', onclick: (e) => editarTitulo(e.currentTarget.parentElement, t) }, icone('editar', 14)) : null
     );
   }
 
@@ -146,6 +154,7 @@ export function telaTitulo({ raiz, ativa, params }) {
     const temporada = serie ? campo('temporada', meu && meu.temporada_atual, { min: '1', max: '100', step: '1' }) : null;
     const episodio = serie ? campo('episodio', meu && meu.episodio_atual, { min: '1', max: '5000', step: '1' }) : null;
     const nota = campo('nota', meu && meu.nota, { min: '0', max: '10', step: '0.5', inputmode: 'decimal' });
+    const avisoNota = h('p', { class: 'suave pequeno', hidden: true }, 'A nota fica disponível depois que você começar a assistir.');
     const comentario = h('textarea', { id: 'comentario', rows: '4', maxlength: '1000', placeholder: 'O que você achou?' }, meu ? meu.comentario : '');
 
     function marcar(status) {
@@ -157,9 +166,13 @@ export function telaTitulo({ raiz, ativa, params }) {
         b.style.borderColor = ligado ? COR_STATUS[k] : '';
         b.style.background = ligado ? COR_STATUS[k] : '';
       });
+      const pode = status === 'assistindo' || status === 'visto' || status === 'abandonado';
+      nota.disabled = !pode;
+      if (!pode) nota.value = '';
+      avisoNota.hidden = pode;
     }
 
-    const grupoStatus = h('div', { class: 'grupo-chips' }, ['quero_ver', 'assistindo', 'visto'].map((st) => {
+    const grupoStatus = h('div', { class: 'grupo-chips' }, ['quero_ver', 'assistindo', 'visto', 'abandonado'].map((st) => {
       botoes[st] = h('button', { type: 'button', class: 'chip-status', 'aria-pressed': 'false', onclick: () => marcar(st) }, ROTULOS[st]);
       return botoes[st];
     }));
@@ -176,11 +189,11 @@ export function telaTitulo({ raiz, ativa, params }) {
     const salvar = h('button', { type: 'submit', class: 'btn-primario cheio' }, 'Salvar');
 
     const form = h('form', {
-      class: 'card painel', novalidate: true,
+      class: 'painel painel-discreto', novalidate: true,
       onsubmit: async (e) => {
         e.preventDefault();
         erro.textContent = '';
-        if (!escolhido) { erro.textContent = 'Escolha um status: quero ver, assistindo ou visto.'; return; }
+        if (!escolhido) { erro.textContent = 'Escolha um status: quero ver, assistindo, visto ou abandonado.'; return; }
         const n = nota.value.trim() === '' ? '' : Number(String(nota.value).replace(',', '.'));
         if (n !== '' && (!isFinite(n) || n < 0 || n > 10)) { erro.textContent = 'A nota vai de 0 a 10.'; return; }
         const dados = { titulo_id: t.id, status: escolhido, nota: n, comentario: comentario.value.trim() };
@@ -205,7 +218,7 @@ export function telaTitulo({ raiz, ativa, params }) {
         }
       }
     },
-      h('h2', null, 'Meu painel'),
+      h('h2', { class: 'mini' }, 'Meu painel'),
       h('div', { class: 'bloco' }, h('p', { class: 'rotulo' }, 'Meu status'), grupoStatus),
       serie ? h('div', { class: 'bloco' },
         h('p', { class: 'rotulo' }, 'Andamento'),
@@ -216,7 +229,7 @@ export function telaTitulo({ raiz, ativa, params }) {
         proximo,
         h('p', { class: 'suave pequeno' }, 'Terminou a temporada? Aumente a temporada e volte o episódio para 1.')
       ) : null,
-      h('div', { class: 'bloco' }, h('label', { for: 'nota', class: 'rotulo' }, 'Minha nota (0 a 10)'), nota),
+      h('div', { class: 'bloco' }, h('label', { for: 'nota', class: 'rotulo' }, 'Minha nota (0 a 10)'), nota, avisoNota),
       h('div', { class: 'bloco' }, h('label', { for: 'comentario', class: 'rotulo' }, 'Meu comentário'), comentario),
       erro, salvar,
       meu ? h('button', {

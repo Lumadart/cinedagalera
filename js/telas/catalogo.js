@@ -10,7 +10,7 @@ const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Do
 const filtro = estado.filtro;
 
 export function telaCatalogo({ raiz, ativa }) {
-  const filtrosEl = h('div', { class: 'filtros' });
+  const filtrosEl = h('div', { class: 'filtros-grupo' });
   const legendaEl = h('div', { class: 'legenda' });
   const gradeEl = h('div', { class: 'grade' });
   const avisoEl = h('div', { class: 'estado-vazio', role: 'status' });
@@ -46,14 +46,19 @@ export function telaCatalogo({ raiz, ativa }) {
     if (filtro.categoria !== 'todos' && !categorias.includes(filtro.categoria)) filtro.categoria = 'todos';
     const mudar = (campo, valor) => () => { filtro[campo] = valor; desenharFiltros(); desenharGrade(); };
     montar(filtrosEl,
-      chip('Todos', filtro.categoria === 'todos', mudar('categoria', 'todos')),
-      categorias.map((c) => chip(PLURAL[c], filtro.categoria === c, mudar('categoria', c))),
-      generos.length ? h('span', { class: 'divisor', 'aria-hidden': 'true' }) : null,
-      generos.map((g) => chip(g, filtro.genero === g, mudar('genero', filtro.genero === g ? null : g)))
+      h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Tipo' },
+        h('span', { class: 'filtro-rotulo' }, 'Tipo'),
+        h('div', { class: 'filtros' },
+          chip('Todos', filtro.categoria === 'todos', mudar('categoria', 'todos')),
+          categorias.map((c) => chip(PLURAL[c], filtro.categoria === c, mudar('categoria', c))))),
+      generos.length ? h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Gênero' },
+        h('span', { class: 'filtro-rotulo' }, 'Gênero'),
+        h('div', { class: 'filtros generos-filtro' },
+          generos.map((g) => chip(g, filtro.genero === g, mudar('genero', filtro.genero === g ? null : g))))) : null
     );
     montar(legendaEl,
       h('span', null, 'Anel do avatar:'),
-      ['visto', 'assistindo', 'quero_ver'].map((s) =>
+      ['visto', 'assistindo', 'quero_ver', 'abandonado'].map((s) =>
         h('span', { class: 'legenda-item' }, h('span', { class: 'ponto', style: { background: COR_STATUS[s] } }), ROTULOS[s]))
     );
   }

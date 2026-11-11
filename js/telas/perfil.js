@@ -41,7 +41,8 @@ export function telaPerfil({ raiz, ativa, params }) {
     const paineis = {
       lista: () => [
         bloco('Está assistindo', null, de('assistindo').length ? linha(de('assistindo').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('Nada em andamento.')),
-        bloco('Quero ver', null, de('quero_ver').length ? linha(de('quero_ver').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('A lista de desejos está vazia.'))
+        bloco('Quero ver', null, de('quero_ver').length ? linha(de('quero_ver').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('A lista de desejos está vazia.')),
+        ...(de('abandonado').length ? [bloco('Abandonados', null, linha(de('abandonado').sort(recente).map((s) => poster(porId[s.titulo_id], s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null))))] : [])
       ],
       vistos: () => [bloco('Vistos', 'Do mais recente para o mais antigo',
         de('visto').length ? linha(de('visto').sort((a, b) => String(b.visto_em || b.atualizado_em).localeCompare(String(a.visto_em || a.atualizado_em)))

@@ -97,8 +97,8 @@ export function telaInicio({ raiz, ativa }) {
     if (!titulos.length) return null;
     const querem = (t) => estado.catalogo.status.filter((x) => x.titulo_id === t.id && x.status === 'quero_ver').length;
     const lista = faixaModo === 'queridos'
-      ? titulos.filter((t) => querem(t) > 0).sort((a, b) => querem(b) - querem(a) || String(b.criado_em).localeCompare(String(a.criado_em))).slice(0, 8)
-      : recentes.slice(0, 8);
+      ? titulos.filter((t) => querem(t) > 0).sort((a, b) => querem(b) - querem(a) || String(b.criado_em).localeCompare(String(a.criado_em))).slice(0, 6)
+      : recentes.slice(0, 6);
     const aba = (id, texto) => h('button', { type: 'button', class: 'chip' + (faixaModo === id ? ' ligado' : ''), 'aria-pressed': String(faixaModo === id), onclick: () => { faixaModo = id; desenhar(); } }, texto);
     return h('section', { class: 'bloco-home' },
       h('div', { class: 'titulo-secao' }, h('h2', null, faixaModo === 'queridos' ? 'Mais querem ver' : 'Últimos adicionados'),
