@@ -2,6 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
 import { painelBadges } from '../badges.js';
+import { cartaoTitulo } from '../cartao.js';
 import { casca, esqueleto, avatar, banner, capa, COR_STATUS, formatarNota, haQuanto } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
@@ -35,22 +36,21 @@ export function telaPerfil({ raiz, ativa, params }) {
     const favs = favoritos.filter((f) => f.membro_id === m.id && porId[f.titulo_id]).sort((a, b) => a.posicao - b.posicao).map((f) => porId[f.titulo_id]);
     const recente = (a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em));
 
-    const poster = (t, extra, pos) => h('a', { class: 'poster', href: '#/titulo/' + t.id, 'aria-label': t.nome },
-      pos ? h('span', { class: 'posicao' }, String(pos)) : null, capa(t), h('span', { class: 'poster-nome' }, t.nome), extra || null);
-    const linha = (lista) => h('div', { class: 'grade-posters' }, lista);
+    const cartao = (t, nota) => cartaoTitulo(t, { aoMudar: desenhar, nota: nota === undefined ? null : nota });
+    const linha = (lista) => h('div', { class: 'grade' }, lista);
     const bloco = (titulo, sub, conteudo) => h('section', { class: 'bloco-home' },
       h('div', { class: 'titulo-secao' }, h('div', null, h('h2', null, titulo), sub ? h('p', { class: 'suave pequeno' }, sub) : null)), conteudo);
     const vazio = (txt) => h('p', { class: 'suave' }, txt);
 
     const paineis = {
       lista: () => [
-        bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('play', 20)), 'Está assistindo'), null, de('assistindo').length ? linha(de('assistindo').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('Nada em andamento.')),
-        bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('marcador', 20)), 'Quero ver'), null, de('quero_ver').length ? linha(de('quero_ver').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('A lista de desejos está vazia.')),
-        ...(de('abandonado').length ? [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('fechar', 20)), 'Abandonados'), null, linha(de('abandonado').sort(recente).map((s) => poster(porId[s.titulo_id], s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null))))] : [])
+        bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('play', 20)), 'Está assistindo'), null, de('assistindo').length ? linha(de('assistindo').sort(recente).map((s) => cartao(porId[s.titulo_id]))) : vazio('Nada em andamento.')),
+        bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('marcador', 20)), 'Quero ver'), null, de('quero_ver').length ? linha(de('quero_ver').sort(recente).map((s) => cartao(porId[s.titulo_id]))) : vazio('A lista de desejos está vazia.')),
+        ...(de('abandonado').length ? [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('fechar', 20)), 'Abandonados'), null, linha(de('abandonado').sort(recente).map((s) => cartao(porId[s.titulo_id], s.nota))))] : [])
       ],
       vistos: () => [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('check', 20)), 'Vistos'), 'Do mais recente para o mais antigo',
         de('visto').length ? linha(de('visto').sort((a, b) => String(b.visto_em || b.atualizado_em).localeCompare(String(a.visto_em || a.atualizado_em)))
-          .map((s) => poster(porId[s.titulo_id], s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null))) : vazio('Nenhum título visto ainda.'))],
+          .map((s) => cartao(porId[s.titulo_id], s.nota))) : vazio('Nenhum título visto ainda.'))],
       conquistas: () => {
         if (!conquistas && !erroConquistas) {
           chamar('badges', { membro_id: m.id }).then((r) => { conquistas = r.badges; if (ativa() && aba === 'conquistas') desenhar(); })
@@ -59,7 +59,7 @@ export function telaPerfil({ raiz, ativa, params }) {
         return [conquistas ? painelBadges(conquistas) : erroConquistas ? h('p', { class: 'erro' }, erroConquistas) : esqueleto('lista', 4)];
       },
       indicacoes: () => [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Indicações'), 'Títulos que ' + (meu ? 'você colocou' : 'a pessoa colocou') + ' no catálogo',
-        indicados.length ? linha(indicados.map((t) => poster(t))) : vazio('Nenhuma indicação ainda.'))]
+        indicados.length ? linha(indicados.map((t) => cartao(t))) : vazio('Nenhuma indicação ainda.'))]
     };
     const tabs = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Seções do perfil' },
       ABAS.map(([k, r]) => h('button', { type: 'button', role: 'tab', class: 'aba' + (aba === k ? ' ligada' : ''), 'aria-selected': String(aba === k),

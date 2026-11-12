@@ -26,7 +26,7 @@ export function medalha(b, tamanho = 76) {
 
 function progresso(b) {
   if (!b.disponivel) return h('span', { class: 'badge-estado' }, 'Chega com os eventos');
-  if (b.tipo === 'unica') return h('span', { class: 'badge-estado' }, b.nivel ? 'Conquistada' : 'Ainda não conquistada');
+  if (b.tipo === 'unica') return h('span', { class: 'badge-estado' }, b.nivel ? (b.concedida ? 'Concedida pela administração' : 'Conquistada') : 'Ainda não conquistada');
   const proxima = b.metas[b.nivel]; // undefined quando já é ouro
   if (proxima === undefined) return h('span', { class: 'badge-estado ouro' }, `Nível máximo · ${b.valor} ${b.unidade}`);
   const base = b.nivel ? b.metas[b.nivel - 1] : 0;

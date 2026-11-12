@@ -57,7 +57,7 @@ export function telaCatalogo({ raiz, ativa }) {
           generos.map((g) => chip(g, filtro.genero === g, mudar('genero', filtro.genero === g ? null : g))))) : null
     );
     montar(legendaEl,
-      h('span', null, 'Anel do avatar:'),
+      h('span', null, 'Seu status (fita e botão do card):'),
       ['visto', 'assistindo', 'quero_ver', 'abandonado'].map((s) =>
         h('span', { class: 'legenda-item' }, h('span', { class: 'ponto', style: { background: COR_STATUS[s] } }), ROTULOS[s]))
     );

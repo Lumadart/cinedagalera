@@ -103,7 +103,7 @@ export function telaInicio({ raiz, ativa }) {
     return h('section', { class: 'bloco-home' },
       h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone(faixaModo === 'queridos' ? 'coracao' : 'novo', 20)), 'Destaques da galera'),
         h('div', { class: 'filtros' }, aba('recentes', 'Últimos adicionados'), aba('queridos', 'Mais querem ver'))),
-      lista.length ? h('div', { class: 'faixa' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar })))
+      lista.length ? h('div', { class: 'grade' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar })))
         : h('p', { class: 'suave' }, 'Ninguém marcou “quero ver” ainda.'));
   }
 

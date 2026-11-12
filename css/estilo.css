@@ -130,8 +130,12 @@ button:disabled { opacity: .6; cursor: default; }
 .ponto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
 
 /* grade e cartões de capa */
-.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 20px; }
-.cartao { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+:root { --card-w: 172px; }
+@media (max-width: 600px) { :root { --card-w: 150px; } }
+/* todos os cards de títulos têm o mesmo tamanho, em qualquer tela */
+.grade, .faixa, .grade-posters { display: grid; grid-template-columns: repeat(auto-fill, var(--card-w)); gap: 20px; justify-content: start; }
+@media (max-width: 400px) { .grade, .faixa, .grade-posters { justify-content: space-between; } }
+.cartao { display: block; width: var(--card-w); min-width: 0; }
 .cartao-capa { position: relative; }
 .link-capa { display: block; position: relative; text-decoration: none; color: inherit; border-radius: 14px; overflow: hidden; }
 .capa { aspect-ratio: 2 / 3; border-radius: 12px; overflow: hidden; background: var(--card2); }
@@ -139,7 +143,9 @@ button:disabled { opacity: .6; cursor: default; }
 .capa.sem-imagem { display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; color: var(--suave); font-weight: 700; }
 .sombra { position: absolute; inset: 0; background: linear-gradient(0deg, #1a1217f2 0%, #1a121700 55%); pointer-events: none; }
 .nome-sobre { position: absolute; left: 12px; right: 52px; bottom: 10px; display: flex; flex-direction: column; color: #fff; text-shadow: 0 1px 4px #000a; }
-.nome-sobre strong { line-height: 1.2; overflow-wrap: anywhere; }
+.nome-sobre strong { line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.nome-sobre small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nota-sobre { position: absolute; top: 40px; left: 10px; background: #231b20d9; border: 1px solid #F5B94266; color: var(--ouro); border-radius: 99px; padding: 1px 9px; font-size: .75rem; font-weight: 700; }
 .nome-sobre small { color: #E9D8DC; }
 .link-capa:hover .capa { filter: brightness(1.1); }
 .pill-tipo { position: absolute; top: 10px; left: 10px; background: #231b20d9; border: 1px solid var(--borda); border-radius: 99px; padding: 1px 10px; font-size: .75rem; color: var(--texto); }
@@ -251,8 +257,7 @@ button:disabled { opacity: .6; cursor: default; }
 .resultado-acao select, .resultado-acao input { width: 190px; padding: 6px 10px; font-size: .85rem; }
 
 /* admin */
-.admin { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 20px; padding-top: 8px; align-items: start; }
-.admin > .titulo-linha { grid-column: 1 / -1; margin-bottom: 0; }
+.admin { display: block; padding-top: 8px; }
 .contagens { display: flex; gap: 16px; color: var(--suave); font-size: .9rem; }
 .form-membro, .form-edicao { display: flex; flex-direction: column; gap: 14px; }
 .form-membro .btn-primario, .form-edicao .btn-primario { align-self: flex-start; }
@@ -282,7 +287,6 @@ button:disabled { opacity: .6; cursor: default; }
 .aba { background: none; border: 0; color: var(--suave); border-radius: 99px; padding: 9px 22px; font-weight: 600; white-space: nowrap; }
 .aba:hover { color: var(--texto); }
 .aba.ligada { background: var(--ouro); color: #2A1500; }
-.grade-posters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
 .poster { position: relative; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: var(--texto); }
 .poster:hover .capa { outline: 2px solid var(--ouro); }
 .poster-nome { font-size: .9rem; font-weight: 600; overflow-wrap: anywhere; }
@@ -345,7 +349,6 @@ button:disabled { opacity: .6; cursor: default; }
   .hero-sinopse { -webkit-line-clamp: 3; }
   .ficha { grid-template-columns: 120px 1fr; gap: 16px; }
   .duas-colunas { grid-template-columns: 1fr; }
-  .grade { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
   .perfil-id { padding: 0 16px 18px; gap: 14px; margin-top: -50px; }
   .perfil-id .avatar { width: 96px !important; height: 96px !important; }
   .perfil-nome { padding-top: 58px; }
@@ -372,7 +375,6 @@ button:disabled { opacity: .6; cursor: default; }
 .grade-favs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px; }
 .perfil-corpo { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
 .perfil-principal { min-width: 0; }
-.grade-posters { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 @media (max-width: 899px) { .grade-favs { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } .favoritos-destaque { padding: 16px; } }
 
 /* título: cabeçalho com a imagem desfocada */
@@ -410,7 +412,6 @@ button:disabled { opacity: .6; cursor: default; }
 .banner, .previa { min-width: 0; width: 100%; }
 
 /* faixa horizontal da página inicial */
-.faixa { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
 
 /* ===== perfil: imagem ocupa todo o cabeçalho, véu degradê por baixo ===== */
 .perfil-topo { position: relative; isolation: isolate; min-height: 300px; display: flex; align-items: flex-end; background: var(--card); }
@@ -584,7 +585,7 @@ textarea { scrollbar-width: thin; }
 
 /* esqueletos de carregamento */
 .esq { border-radius: 16px; background: linear-gradient(100deg, var(--card) 30%, var(--card2) 50%, var(--card) 70%); background-size: 200% 100%; animation: brilho 1.6s linear infinite; }
-.esq-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 16px; }
+.esq-grade { display: grid; grid-template-columns: repeat(auto-fill, var(--card-w)); gap: 20px; justify-content: start; }
 .esq-card { aspect-ratio: 2 / 3; }
 .esq-lista { display: flex; flex-direction: column; gap: 12px; }
 .esq-linha { height: 70px; }
@@ -630,3 +631,26 @@ textarea { scrollbar-width: thin; }
 .medalha.bloqueada.com-arte .medalha-img { filter: grayscale(1) brightness(.55); opacity: .65; }
 .medalha-img { animation: entra .4s ease both; }
 .badge-card.tem .medalha.com-arte { filter: drop-shadow(0 4px 10px #0008); }
+
+/* administração: layout */
+.adm-membros { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 22px; align-items: start; }
+.adm-lado { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px; }
+.contagens span { background: var(--card); border: 1px solid var(--borda); border-radius: 99px; padding: 6px 14px; }
+.contagens b { color: var(--ouro); }
+.lista-adm .membro-adm { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; }
+.membro-adm .membro-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+.membro-adm .acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.membro-adm .acoes .btn-sec { padding: 6px 14px; font-size: .85rem; white-space: nowrap; }
+.membro-adm .mini-capa { width: 48px; aspect-ratio: 2 / 3; border-radius: 8px; overflow: hidden; display: block; background: var(--card2); }
+.membro-adm .mini-capa .capa, .membro-adm .mini-capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.admin-painel > .suave { max-width: 75ch; }
+.adm-badge .acoes { flex-direction: column; align-items: flex-end; gap: 6px; }
+.conceder-linha { display: flex; gap: 8px; align-items: center; }
+.conceder-linha select { width: auto; min-width: 120px; padding-top: 6px; padding-bottom: 6px; font-size: .85rem; }
+.interruptor { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--suave); cursor: pointer; }
+.interruptor input { appearance: none; -webkit-appearance: none; width: 38px; height: 22px; border-radius: 99px; background: var(--borda); position: relative; margin: 0; cursor: pointer; transition: background .2s; padding: 0; border: none; }
+.interruptor input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.interruptor input:checked { background: var(--ouro); }
+.interruptor input:checked::after { transform: translateX(16px); background: #2A1500; }
+@media (max-width: 1000px) { .adm-membros { grid-template-columns: minmax(0, 1fr); } .adm-lado { position: static; } }
+@media (max-width: 700px) { .lista-adm .membro-adm { grid-template-columns: auto minmax(0, 1fr); } .membro-adm .acoes { grid-column: 1 / -1; justify-content: flex-start; } .adm-badge .acoes { align-items: stretch; } .conceder-linha { flex-wrap: wrap; } }

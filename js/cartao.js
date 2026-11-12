@@ -1,7 +1,7 @@
 import { h, icone } from './dom.js';
 import { estado, aplicarStatusLocal, removerStatusLocal } from './estado.js';
 import { chamar } from './api.js';
-import { avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, rotuloCategoria, detalheTitulo } from './ui.js';
+import { capa, avisar, ROTULOS, COR_STATUS, rotuloCategoria, detalheTitulo, formatarNota } from './ui.js';
 
 export function fecharMenus() {
   document.querySelectorAll('.menu-status').forEach((m) => {
@@ -13,23 +13,9 @@ export function fecharMenus() {
 document.addEventListener('click', fecharMenus);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharMenus(); });
 
-/** Cartão de um título: capa com nome em cima, botão de status e anéis dos amigos. */
-export function cartaoTitulo(t, { aoMudar }) {
-  const { status, membros } = estado.catalogo;
-  const porMembro = Object.fromEntries(membros.map((m) => [m.id, m]));
-  const linhas = status.filter((s) => s.titulo_id === t.id && porMembro[s.membro_id]);
-  const meu = linhas.find((s) => s.membro_id === estado.membro.id);
-  const cont = { visto: 0, assistindo: 0, quero_ver: 0, abandonado: 0 };
-  linhas.forEach((s) => { cont[s.status] += 1; });
-  const partes = [];
-  if (cont.visto) partes.push(cont.visto + (cont.visto === 1 ? ' viu' : ' viram'));
-  if (cont.assistindo) partes.push(cont.assistindo + ' assistindo');
-  if (cont.abandonado) partes.push(cont.abandonado + (cont.abandonado === 1 ? ' abandonou' : ' abandonaram'));
-  if (cont.quero_ver) partes.push(cont.quero_ver + (cont.quero_ver === 1 ? ' quer ver' : ' querem ver'));
-  const ordenadas = linhas.filter((s) => porMembro[s.membro_id]).sort((a, b) => ORDEM_STATUS[a.status] - ORDEM_STATUS[b.status]);
-  const mostrados = ordenadas.slice(0, 5);
-  const extra = ordenadas.length - mostrados.length;
-
+/** Cartão de um título (sempre do mesmo tamanho): capa com nome por cima e botão de status na base. */
+export function cartaoTitulo(t, { aoMudar, nota = null }) {
+  const meu = estado.catalogo.status.find((s) => s.titulo_id === t.id && s.membro_id === estado.membro.id);
   const capaBox = h('div', { class: 'cartao-capa' });
   const botao = h('button', {
     type: 'button', class: 'btn-status' + (meu ? ' tem' : ''),
@@ -44,6 +30,7 @@ export function cartaoTitulo(t, { aoMudar }) {
       h('span', { class: 'sombra' }),
       h('span', { class: 'nome-sobre' }, h('strong', null, t.nome), h('small', null, [t.ano, detalheTitulo(t)].filter(Boolean).join(' · ')))),
     h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
+    ...(nota !== null && nota !== undefined ? [h('span', { class: 'nota-sobre' }, '★ ' + formatarNota(nota))] : []),
     ...(meu ? [h('span', { class: 'fita', style: { color: COR_STATUS[meu.status] }, title: ROTULOS[meu.status] })] : []),
     botao
   );
@@ -82,11 +69,5 @@ export function cartaoTitulo(t, { aoMudar }) {
     } catch (e) { avisar(e.message, 'erro'); }
   }
 
-  return h('article', { class: 'cartao' },
-    capaBox,
-    mostrados.length ? h('div', { class: 'aneis' },
-      mostrados.map((s) => avatar(porMembro[s.membro_id], { tamanho: 26, cor: COR_STATUS[s.status], dica: `${porMembro[s.membro_id].nome}: ${ROTULOS[s.status].toLowerCase()}` })),
-      extra > 0 ? h('span', { class: 'mais-gente' }, '+' + extra) : null) : null,
-    h('p', { class: 'resumo' }, partes.length ? partes.join(' · ') : 'Ninguém marcou ainda')
-  );
+  return h('article', { class: 'cartao' }, capaBox);
 }

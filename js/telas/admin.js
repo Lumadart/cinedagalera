@@ -1,7 +1,8 @@
 import { h, montar } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, avatar, avisar, capa, normalizar, rotuloCategoria } from '../ui.js';
+import { casca, esqueleto, avatar, avisar, capa, normalizar, rotuloCategoria } from '../ui.js';
+import { medalha } from '../badges.js';
 
 function quando(iso) {
   if (!iso) return 'nunca';
@@ -16,8 +17,8 @@ export function telaAdmin({ raiz, ativa }) {
     return;
   }
   const area = h('div', { class: 'admin' });
-  const painel = h('div', { class: 'admin-painel' }, h('p', { class: 'suave' }, 'Carregando…'));
-  const ABAS = [['membros', 'Membros'], ['titulos', 'Títulos'], ['manutencao', 'Manutenção e histórico']];
+  const painel = h('div', { class: 'admin-painel' }, esqueleto('lista', 3));
+  const ABAS = [['membros', 'Membros'], ['titulos', 'Títulos'], ['conquistas', 'Conquistas'], ['manutencao', 'Manutenção e histórico']];
   let aba = 'membros';
   const abasEl = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Áreas da administração' });
   function pintarAbas() {
@@ -25,7 +26,7 @@ export function telaAdmin({ raiz, ativa }) {
       onclick: () => { aba = k; pintarAbas(); abrir(); } }, r)));
   }
   montar(area,
-    h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Administração'), h('p', { class: 'suave' }, 'Membros, correções no catálogo e histórico de alterações.'))),
+    h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Administração'), h('p', { class: 'suave' }, 'Membros, catálogo, conquistas e histórico de alterações.'))),
     abasEl, painel);
   montar(raiz, casca('admin', area));
   pintarAbas(); abrir();
@@ -33,6 +34,7 @@ export function telaAdmin({ raiz, ativa }) {
   function abrir() {
     if (aba === 'membros') carregar();
     else if (aba === 'titulos') abaTitulos();
+    else if (aba === 'conquistas') abaConquistas();
     else abaManutencao();
   }
 
@@ -92,6 +94,56 @@ export function telaAdmin({ raiz, ativa }) {
       h('p', { class: 'suave' }, 'Corrija dados vindos do TMDB ou remova indicações erradas. Para mudar a categoria ou o recado, abra o título.'),
       campo, lista);
     pintar();
+  }
+
+  // ---------- Conquistas: ligar/desligar e conceder ----------
+  async function abaConquistas() {
+    montar(painel, esqueleto('lista', 5));
+    let d;
+    try { d = await chamar('admin_badges_painel'); } catch (e) { if (ativa()) montar(painel, h('p', { class: 'erro' }, e.message)); return; }
+    if (!ativa() || aba !== 'conquistas') return;
+    const NOMES = ['', 'Bronze', 'Prata', 'Ouro'];
+    const linhas = d.badges.map((b) => {
+      const max = b.metas ? 3 : 1;
+      const sel = h('select', { 'aria-label': 'Membro para ' + b.nome }, d.membros.map((m) => h('option', { value: m.id }, m.nome)));
+      const niv = h('select', { 'aria-label': 'Nível de ' + b.nome });
+      const aviso = h('small', { class: 'suave' });
+      const pintarNiveis = () => {
+        const q = b.membros[sel.value] || { nivel: 0, concedida: false };
+        montar(niv, h('option', { value: '0' }, q.concedida ? 'Retirar concessão' : 'Escolha o nível'),
+          Array.from({ length: max }, (_, i) => h('option', { value: String(i + 1) }, b.metas ? NOMES[i + 1] : 'Conceder')));
+        niv.value = q.concedida ? String(q.nivel) : '0';
+        aviso.textContent = q.nivel ? `Atual: ${b.metas ? NOMES[q.nivel] : 'conquistada'}${q.concedida ? ' (concedida)' : ''}` : 'Ainda não tem';
+      };
+      sel.addEventListener('change', pintarNiveis); pintarNiveis();
+      const aplicar = h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
+        aplicar.disabled = true;
+        try {
+          await chamar('admin_badge_conceder', { membro_id: sel.value, chave: b.chave, nivel: Number(niv.value) });
+          avisar('Conquista atualizada.'); abaConquistas();
+        } catch (e) { avisar(e.message, 'erro'); aplicar.disabled = false; }
+      } }, 'Aplicar');
+      const interruptor = h('input', { type: 'checkbox', checked: b.ativa, 'aria-label': (b.ativa ? 'Desativar ' : 'Ativar ') + b.nome });
+      interruptor.addEventListener('change', async () => {
+        try { await chamar('admin_badge_ativar', { chave: b.chave, ativa: interruptor.checked }); avisar(interruptor.checked ? 'Conquista ativada.' : 'Conquista desativada — ninguém a vê.'); }
+        catch (e) { avisar(e.message, 'erro'); interruptor.checked = !interruptor.checked; }
+      });
+      const c = b.contagem;
+      const total = b.metas ? `${c[1]} bronze · ${c[2]} prata · ${c[3]} ouro` : `${c[1]} ${c[1] === 1 ? 'pessoa tem' : 'pessoas têm'}`;
+      return h('li', { class: 'membro-adm adm-badge' + (b.ativa ? '' : ' inativo') },
+        medalha({ chave: b.chave, nivel: b.metas ? 3 : 1, metas: b.metas, tipo: b.metas ? 'niveis' : 'unica' }, 56),
+        h('div', { class: 'membro-info' },
+          h('div', { class: 'membro-topo' }, h('strong', null, b.nome), h('span', { class: 'etiqueta cinza' }, b.categoria), b.evento ? h('span', { class: 'etiqueta' }, 'eventos') : null),
+          h('div', { class: 'suave pequeno' }, b.descricao),
+          h('div', { class: 'suave pequeno' }, total)),
+        h('div', { class: 'acoes adm-conceder' },
+          h('label', { class: 'interruptor' }, interruptor, h('span', null, 'Ativa')),
+          h('div', { class: 'conceder-linha' }, sel, niv, aplicar),
+          aviso));
+    });
+    montar(painel,
+      h('p', { class: 'suave' }, 'As conquistas são calculadas sozinhas. Aqui você pode desligar uma conquista para todos ou conceder (e retirar) à mão — útil para as de eventos enquanto eles não existem. A concessão nunca rebaixa quem já ganhou pelo uso.'),
+      h('ul', { class: 'lista-adm' }, linhas));
   }
 
   // ---------- Manutenção e histórico ----------
@@ -199,12 +251,13 @@ export function telaAdmin({ raiz, ativa }) {
       );
     };
 
-    montar(painel,
-      h('div', { class: 'contagens' },
-        h('span', null, `${limites.membros_ativos} de ${limites.max_membros} membros`),
-        h('span', null, `${limites.admins_ativos} de ${limites.max_admins} admins`)),
-      form,
+    montar(painel, h('div', { class: 'adm-membros' },
+      h('div', { class: 'adm-lado' },
+        h('div', { class: 'contagens' },
+          h('span', null, h('b', null, `${limites.membros_ativos}/${limites.max_membros}`), ' membros'),
+          h('span', null, h('b', null, `${limites.admins_ativos}/${limites.max_admins}`), ' admins')),
+        form),
       h('ul', { class: 'lista-adm' }, membros.map(linha))
-    );
+    ));
   }
 }

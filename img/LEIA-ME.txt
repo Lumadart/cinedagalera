@@ -2,7 +2,7 @@ Coloque aqui a imagem do menu lateral com o nome menu.png (também pode ser JPG 
 Tamanho recomendado: 440 x 300 px (proporção 3 para 2). Ela aparece na parte de baixo do menu lateral.
 Se o arquivo não existir, o site mostra só um espaço vazio com borda tracejada.
 
-BADGES (arte opcional)
+BADGES (arte já incluída em img/badges/ — pode substituir pelas suas, mantendo os nomes)
 Coloque as imagens em img/badges/ (PNG, quadrado, fundo transparente, ex.: 256x256).
  - Badges com níveis: <chave>-1.png (bronze), <chave>-2.png (prata), <chave>-3.png (ouro). Ex.: cinefilo-1.png
  - Badges únicas: <chave>.png. Ex.: primeiro_play.png
