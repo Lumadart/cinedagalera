@@ -594,3 +594,34 @@ textarea { scrollbar-width: thin; }
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .img-suave { opacity: 1; }
 }
+
+/* badges */
+.badges-resumo { margin-bottom: 18px; }
+.badges-grupo { margin-bottom: 26px; }
+.badges-grupo h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--suave); margin-bottom: 12px; }
+.badges-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.badge-card { display: flex; gap: 16px; align-items: center; background: var(--card); border: 1px solid var(--borda); border-radius: 18px; padding: 16px; transition: transform .2s, border-color .2s, box-shadow .2s; }
+.badge-card.tem { border-color: #F5B94255; }
+.badge-card:hover { transform: translateY(-3px); border-color: var(--ouro); box-shadow: 0 10px 24px #0007; }
+.badge-card:not(.tem) { opacity: .78; }
+.badge-card.em-breve { opacity: .55; }
+.badge-texto { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.badge-texto strong { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.badge-texto p { color: var(--suave); font-size: .82rem; line-height: 1.35; }
+.nivel { font-size: .68rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: 99px; color: #2A1500; }
+.nivel-1 { background: #C98B5A; } .nivel-2 { background: #C9CCD8; } .nivel-3 { background: #F5B942; }
+.badge-estado { font-size: .78rem; color: var(--suave); margin-top: 3px; }
+.badge-estado.ouro { color: var(--ouro); }
+.badge-prog { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+.badge-prog small { color: var(--suave); font-size: .75rem; }
+.barra-badge { height: 6px; background: var(--fundo); border-radius: 99px; overflow: hidden; }
+.barra-badge span { display: block; height: 100%; background: linear-gradient(90deg, #C98B5A, var(--ouro)); border-radius: 99px; transition: width .6s ease; }
+.medalha { position: relative; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--cor-medalha);
+  background: radial-gradient(circle at 30% 25%, #ffffff22, transparent 55%), var(--card2); border: 3px solid var(--cor-medalha);
+  box-shadow: inset 0 0 0 4px var(--card), 0 0 18px color-mix(in srgb, var(--cor-medalha) 35%, transparent); }
+.medalha.bloqueada { box-shadow: inset 0 0 0 4px var(--card); filter: grayscale(.6); }
+.medalha.com-arte { border: none; background: none; box-shadow: none; }
+.medalha.com-arte .medalha-ico { display: none; }
+.medalha-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.badge-card:hover .medalha { animation: balanca .6s ease; }
+@keyframes balanca { 25% { transform: rotate(-8deg) scale(1.06); } 60% { transform: rotate(6deg) scale(1.06); } 100% { transform: none; } }

@@ -1,14 +1,18 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
+import { chamar } from '../api.js';
+import { painelBadges } from '../badges.js';
 import { casca, esqueleto, avatar, banner, capa, COR_STATUS, formatarNota, haQuanto } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
-const ABAS = [['lista', 'Minha lista'], ['vistos', 'Vistos'], ['indicacoes', 'Indicações']];
+const ABAS = [['lista', 'Minha lista'], ['vistos', 'Vistos'], ['indicacoes', 'Indicações'], ['conquistas', 'Conquistas']];
 
 export function telaPerfil({ raiz, ativa, params }) {
   const area = h('div', { class: 'perfil' }, esqueleto('lista', 4));
   const id = params.id || estado.membro.id;
   let aba = 'lista';
+  let conquistas = null; // lista de badges, carregada só quando a aba é aberta
+  let erroConquistas = '';
   montar(raiz, casca('perfil', area));
   if (estado.catalogo) desenhar();
   carregarCatalogo().then(() => { if (ativa()) desenhar(); }).catch((e) => {
@@ -47,6 +51,13 @@ export function telaPerfil({ raiz, ativa, params }) {
       vistos: () => [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('check', 20)), 'Vistos'), 'Do mais recente para o mais antigo',
         de('visto').length ? linha(de('visto').sort((a, b) => String(b.visto_em || b.atualizado_em).localeCompare(String(a.visto_em || a.atualizado_em)))
           .map((s) => poster(porId[s.titulo_id], s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null))) : vazio('Nenhum título visto ainda.'))],
+      conquistas: () => {
+        if (!conquistas && !erroConquistas) {
+          chamar('badges', { membro_id: m.id }).then((r) => { conquistas = r.badges; if (ativa() && aba === 'conquistas') desenhar(); })
+            .catch((e) => { erroConquistas = e.message; if (ativa() && aba === 'conquistas') desenhar(); });
+        }
+        return [conquistas ? painelBadges(conquistas) : erroConquistas ? h('p', { class: 'erro' }, erroConquistas) : esqueleto('lista', 4)];
+      },
       indicacoes: () => [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Indicações'), 'Títulos que ' + (meu ? 'você colocou' : 'a pessoa colocou') + ' no catálogo',
         indicados.length ? linha(indicados.map((t) => poster(t))) : vazio('Nenhuma indicação ainda.'))]
     };

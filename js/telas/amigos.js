@@ -1,4 +1,5 @@
 import { h, montar } from '../dom.js';
+import { chamar } from '../api.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { casca, esqueleto, avatar, banner, capa } from '../ui.js';
 
@@ -28,8 +29,18 @@ export function telaAmigos({ raiz, ativa }) {
             h('div', { class: 'pilulas' },
               h('span', null, h('b', null, String(contar(m.id, 'visto'))), ' vistos'),
               h('span', null, h('b', null, String(contar(m.id, 'assistindo'))), ' assistindo'),
-              h('span', null, h('b', null, String(indicados(m.id))), ' indicações')),
+              h('span', null, h('b', null, String(indicados(m.id))), ' indicações'),
+              h('span', { class: 'pilula-badges', 'data-membro': m.id, hidden: true })),
             favs.length ? h('div', { class: 'mini-favs' }, favs.map((t) => h('span', { title: t.nome }, capa(t)))) : h('span', { class: 'suave pequeno' }, 'Ainda sem favoritos')));
       })));
+    chamar('badges', { resumo: true }).then((r) => {
+      if (!ativa()) return;
+      area.querySelectorAll('.pilula-badges').forEach((el) => {
+        const x = r.resumo[el.dataset.membro];
+        if (!x) return;
+        el.hidden = false; el.textContent = '';
+        el.append(h('b', null, String(x.conquistadas)), ' conquistas');
+      });
+    }).catch(() => { /* sem conquistas por enquanto; o resto da tela segue normal */ });
   }
 }
