@@ -17,10 +17,10 @@ export function medalha(b, tamanho = 76) {
     class: 'medalha' + (b.nivel ? '' : ' bloqueada'),
     style: { width: tamanho + 'px', height: tamanho + 'px', '--cor-medalha': cor }
   }, h('span', { class: 'medalha-ico' }, icone(ICONE[b.chave] || 'estrela', Math.round(tamanho * 0.42))));
-  if (b.nivel) {
-    const img = h('img', { src: `img/badges/${b.chave}${b.metas ? '-' + b.nivel : ''}.png`, alt: '', class: 'medalha-img' });
-    img.addEventListener('load', () => { caixa.classList.add('com-arte'); caixa.append(img); }, { once: true });
-  }
+  // A arte fica em img/badges/. Bloqueadas aparecem em cinza (versão bronze), para mostrar o que dá para ganhar.
+  const nivelArte = Math.max(b.nivel, 1);
+  const img = h('img', { src: `img/badges/${b.chave}${b.metas ? '-' + nivelArte : ''}.png`, alt: '', class: 'medalha-img' });
+  img.addEventListener('load', () => { caixa.classList.add('com-arte'); caixa.append(img); }, { once: true });
   return caixa;
 }
 

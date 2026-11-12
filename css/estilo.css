@@ -625,3 +625,8 @@ textarea { scrollbar-width: thin; }
 .medalha-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .badge-card:hover .medalha { animation: balanca .6s ease; }
 @keyframes balanca { 25% { transform: rotate(-8deg) scale(1.06); } 60% { transform: rotate(6deg) scale(1.06); } 100% { transform: none; } }
+
+.medalha.com-arte { box-shadow: none; filter: none; }
+.medalha.bloqueada.com-arte .medalha-img { filter: grayscale(1) brightness(.55); opacity: .65; }
+.medalha-img { animation: entra .4s ease both; }
+.badge-card.tem .medalha.com-arte { filter: drop-shadow(0 4px 10px #0008); }
