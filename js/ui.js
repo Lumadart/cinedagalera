@@ -203,15 +203,15 @@ export function casca(rota, conteudo, { aoBuscar = null } = {}) {
 
 
 /** "2h05" para filmes; "3 temp. · 24 eps" para séries. Vazio se o TMDB não informou. */
-export function detalheTitulo(t) {
+export function detalheTitulo(t, curto = false) {
   if (t.tipo === 'filme') {
     if (!t.duracao_min) return '';
     const hh = Math.floor(t.duracao_min / 60), mm = t.duracao_min % 60;
     return hh ? `${hh}h${String(mm).padStart(2, '0')}` : `${mm} min`;
   }
   const p = [];
-  if (t.temporadas) p.push(t.temporadas + (t.temporadas === 1 ? ' temp.' : ' temps.'));
-  if (t.episodios) p.push(t.episodios + (t.episodios === 1 ? ' ep.' : ' eps.'));
+  if (t.temporadas) p.push(curto ? t.temporadas + 'T' : t.temporadas + (t.temporadas === 1 ? ' temp.' : ' temps.'));
+  if (t.episodios) p.push(t.episodios + (t.episodios === 1 ? ' ep' : ' eps'));
   return p.join(' · ');
 }
 

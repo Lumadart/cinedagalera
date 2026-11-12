@@ -6,8 +6,6 @@ import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, 
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
-let filtroCat = 'todos';
-let faixaModo = 'recentes'; // 'recentes' | 'queridos'
 let slideAtual = 0; // lembra o destaque ao redesenhar a tela
 
 export function telaInicio({ raiz, ativa }) {
@@ -29,7 +27,7 @@ export function telaInicio({ raiz, ativa }) {
     const quem = Object.fromEntries(membros.map((m) => [m.id, m]));
     const recentes = titulos.slice().sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     montar(conteudo,
-      h('div', { class: 'inicio-principal' }, hero(recentes.slice(0, 5), quem), faixa(titulos, recentes), catalogo(recentes)),
+      h('div', { class: 'inicio-principal' }, hero(recentes.slice(0, 5), quem), ultimos(recentes), queridos(titulos)),
       h('aside', { class: 'inicio-lateral' }, assistindo(porId), minhaLista(porId), atividade(titulos, status, porId, quem))
     );
   }
@@ -93,18 +91,23 @@ export function telaInicio({ raiz, ativa }) {
     return caixa;
   }
 
-  function faixa(titulos, recentes) {
-    if (!titulos.length) return null;
-    const querem = (t) => estado.catalogo.status.filter((x) => x.titulo_id === t.id && x.status === 'quero_ver').length;
-    const lista = faixaModo === 'queridos'
-      ? titulos.filter((t) => querem(t) > 0).sort((a, b) => querem(b) - querem(a) || String(b.criado_em).localeCompare(String(a.criado_em))).slice(0, 6)
-      : recentes.slice(0, 6);
-    const aba = (id, texto) => h('button', { type: 'button', class: 'chip' + (faixaModo === id ? ' ligado' : ''), 'aria-pressed': String(faixaModo === id), onclick: () => { faixaModo = id; desenhar(); } }, texto);
+  function secao(icone_, titulo, lista, vazio, rodape) {
     return h('section', { class: 'bloco-home' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone(faixaModo === 'queridos' ? 'coracao' : 'novo', 20)), 'Destaques da galera'),
-        h('div', { class: 'filtros' }, aba('recentes', 'Últimos adicionados'), aba('queridos', 'Mais querem ver'))),
-      lista.length ? h('div', { class: 'grade' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar })))
-        : h('p', { class: 'suave' }, 'Ninguém marcou “quero ver” ainda.'));
+      h('div', { class: 'titulo-secao' },
+        h('h2', null, h('span', { class: 'ico-ouro' }, icone(icone_, 20)), titulo),
+        h('a', { href: '#/catalogo' }, 'Ver catálogo →')),
+      lista.length ? h('div', { class: 'grade' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar }))) : h('p', { class: 'suave' }, vazio));
+  }
+
+  function ultimos(recentes) {
+    return secao('novo', 'Últimos adicionados', recentes.slice(0, 12), 'Ainda não há títulos. Que tal adicionar o primeiro?');
+  }
+
+  function queridos(titulos) {
+    const querem = (t) => estado.catalogo.status.filter((x) => x.titulo_id === t.id && x.status === 'quero_ver').length;
+    const lista = titulos.filter((t) => querem(t) > 0)
+      .sort((a, b) => querem(b) - querem(a) || String(b.criado_em).localeCompare(String(a.criado_em))).slice(0, 12);
+    return secao('coracao', 'Mais querem ver', lista, 'Ninguém marcou “quero ver” ainda.');
   }
 
   function assistindo(porId) {
@@ -118,18 +121,6 @@ export function telaInicio({ raiz, ativa }) {
         const prog = t.tipo === 'serie' && s.temporada_atual && s.episodio_atual ? `T${s.temporada_atual} · Ep. ${s.episodio_atual}` : rotuloCategoria(t);
         return h('li', null, h('a', { href: '#/titulo/' + t.id }, h('span', { class: 'mini-capa' }, capa(t)), h('span', null, h('strong', null, t.nome), h('small', null, prog))));
       })) : h('p', { class: 'suave' }, 'Nada em andamento. Marque um título como “assistindo”.'));
-  }
-
-  function catalogo(recentes) {
-    const presentes = Object.keys(CATEGORIAS).filter((c) => recentes.some((t) => t.categoria === c));
-    if (filtroCat !== 'todos' && !presentes.includes(filtroCat)) filtroCat = 'todos';
-    const lista = recentes.filter((t) => filtroCat === 'todos' || t.categoria === filtroCat).slice(0, 10);
-    const pill = (id, texto) => h('button', { type: 'button', class: 'chip' + (filtroCat === id ? ' ligado' : ''), 'aria-pressed': String(filtroCat === id), onclick: () => { filtroCat = id; desenhar(); } }, texto);
-    return h('section', { class: 'bloco-home' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('grade', 20)), 'Catálogo'),
-        h('div', { class: 'filtros' }, pill('todos', 'Todos'), presentes.map((c) => pill(c, PLURAL[c])))),
-      lista.length ? h('div', { class: 'grade' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar }))) : h('p', { class: 'suave' }, 'Ainda não há títulos.'),
-      recentes.length > 10 ? h('p', { class: 'ver-tudo' }, h('a', { class: 'btn-sec', href: '#/catalogo' }, 'Ver o catálogo completo')) : null);
   }
 
   function atividade(titulos, status, porId, quem) {

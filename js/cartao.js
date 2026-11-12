@@ -28,7 +28,7 @@ export function cartaoTitulo(t, { aoMudar, nota = null }) {
   capaBox.append(
     h('a', { class: 'link-capa', href: '#/titulo/' + t.id, 'aria-label': 'Abrir ' + t.nome }, capa(t),
       h('span', { class: 'sombra' }),
-      h('span', { class: 'nome-sobre' }, h('strong', null, t.nome), h('small', null, [t.ano, detalheTitulo(t)].filter(Boolean).join(' · ')))),
+      h('span', { class: 'nome-sobre' }, h('strong', null, t.nome), h('small', null, [t.ano, detalheTitulo(t, true)].filter(Boolean).join(' · ')))),
     h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
     ...(nota !== null && nota !== undefined ? [h('span', { class: 'nota-sobre' }, '★ ' + formatarNota(nota))] : []),
     ...(meu ? [h('span', { class: 'fita', style: { color: COR_STATUS[meu.status] }, title: ROTULOS[meu.status] })] : []),

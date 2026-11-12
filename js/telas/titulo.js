@@ -40,47 +40,86 @@ export function telaTitulo({ raiz, ativa, params }) {
     if (t.tipo === 'serie' && t.temporadas) detalhes.push(`${t.temporadas} ${t.temporadas === 1 ? 'temporada' : 'temporadas'}`);
     if (t.tipo === 'serie' && t.episodios) detalhes.push(`${t.episodios} episódios`);
 
+    const contagem = { visto: 0, assistindo: 0, quero_ver: 0, abandonado: 0 };
+    linhas.forEach((s) => { contagem[s.status] += 1; });
+
     const conteudo = h('div', { class: 'pagina-titulo' },
       h('a', { class: 'voltar', href: '#/catalogo' }, icone('voltar', 18), 'Voltar ao catálogo'),
-      h('section', { class: 'ficha' },
-        fundoImg(t, 'ficha-fundo'),
-        h('div', { class: 'ficha-capa' }, capa(t)),
-        h('div', { class: 'ficha-info' },
-          h('div', { class: 'linha-pills' },
-            h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
-            h('span', { class: 'suave' }, [t.ano, ...detalhes].filter(Boolean).join(' · '))
-          ),
-          h('h1', null, t.nome),
-          ...nomesExtras(t),
-          t.generos.length ? h('div', { class: 'generos' }, t.generos.map((g) => h('span', { class: 'genero' }, g))) : null,
-          h('div', { class: 'sinopse' }, h('h2', { class: 'mini' }, 'Sinopse'), h('p', null, t.sinopse || 'Sem sinopse disponível.'))
+      h('section', { class: 'tit-hero' },
+        fundoImg(t, 'tit-fundo'),
+        h('div', { class: 'tit-topo' },
+          h('div', { class: 'tit-capa' }, capa(t)),
+          h('div', { class: 'tit-info' },
+            h('div', { class: 'linha-pills' },
+              h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
+              [t.ano, ...detalhes].filter(Boolean).map((x) => h('span', { class: 'meta-chip' }, x))
+            ),
+            h('h1', null, t.nome),
+            nomesExtras(t),
+            t.generos.length ? h('div', { class: 'generos' }, t.generos.map((g) => h('span', { class: 'genero' }, g))) : null,
+            sinopse(t)
+          )
         ),
-        h('aside', { class: 'ficha-lado' },
-          h('div', { class: 'notas-titulo' },
-            t.nota_tmdb !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'Nota TMDB'), h('strong', null, '★ ' + formatarNota(t.nota_tmdb))) : null,
-            media !== null ? h('span', { class: 'nota-bloco' }, h('small', null, 'Média da galera'), h('strong', null, '★ ' + formatarNota(media))) : h('span', { class: 'nota-bloco' }, h('small', null, 'Média da galera'), h('span', { class: 'suave pequeno' }, 'sem notas ainda'))
-          ),
-          indicacao(t)
+        h('div', { class: 'tit-stats' },
+          h('div', { class: 'tile' }, h('small', null, 'Nota TMDB'),
+            t.nota_tmdb !== null ? h('strong', { class: 'grande' }, '★ ' + formatarNota(t.nota_tmdb)) : h('span', { class: 'suave' }, '—')),
+          h('div', { class: 'tile' }, h('small', null, 'Média da galera'),
+            media !== null ? h('strong', { class: 'grande' }, '★ ' + formatarNota(media)) : h('span', { class: 'suave' }, 'sem notas ainda'),
+            media !== null ? h('span', { class: 'suave pequeno' }, `${notas.length} ${notas.length === 1 ? 'nota' : 'notas'}`) : null),
+          h('div', { class: 'tile tile-contagem' }, h('small', null, 'Na galera'),
+            h('div', { class: 'contagem-linha' }, ['visto', 'assistindo', 'quero_ver', 'abandonado'].filter((k) => contagem[k]).map((k) =>
+              h('span', { class: 'cont' }, h('i', { class: 'ponto', style: { background: COR_STATUS[k] } }), h('b', null, String(contagem[k])), ' ' + ROTULOS[k].toLowerCase())),
+              linhas.length ? null : h('span', { class: 'suave' }, 'Ninguém marcou ainda'))),
+          h('div', { class: 'tile tile-indicacao' }, indicacao(t))
         )
       ),
-      h('section', { class: 'duas-colunas' }, painelGrupo(t, linhas, membros, media), painelMeu(t, meu))
+      h('section', { class: 'tit-corpo' }, painelGrupo(t, linhas, membros, contagem), painelMeu(t, meu))
     );
     montar(raiz, casca('catalogo', conteudo));
   }
 
+  function sinopse(t) {
+    const texto = t.sinopse || 'Sem sinopse disponível.';
+    const longa = texto.length > 330;
+    const p = h('p', { class: 'sinopse-texto' + (longa ? ' recortada' : '') }, texto);
+    return h('div', { class: 'sinopse' }, p,
+      longa ? h('button', { type: 'button', class: 'link-discreto', onclick: (e) => {
+        const aberta = p.classList.toggle('recortada') === false;
+        e.currentTarget.textContent = aberta ? 'Mostrar menos' : 'Ler mais';
+      } }, 'Ler mais') : null);
+  }
+
   function nomesExtras(t) {
-    const linhasNomes = [];
-    if (t.titulo_original) linhasNomes.push(h('p', { class: 'nome-extra' }, h('span', null, 'Título original'), t.titulo_original));
-    if (t.outros_titulos && t.outros_titulos.length) linhasNomes.push(h('p', { class: 'nome-extra' }, h('span', null, 'Também chamado de'), t.outros_titulos.join(' · ')));
-    return linhasNomes;
+    const itens = [];
+    if (t.titulo_original) itens.push(['Título original', t.titulo_original]);
+    const outros = t.outros_titulos || [];
+    if (outros.length) {
+      const resto = outros.slice(2);
+      const caixa = h('p', { class: 'nome-extra' }, h('span', null, 'Também chamado de'), outros.slice(0, 2).join(' · '));
+      if (resto.length) {
+        const mais = h('span', { class: 'mais-nomes', hidden: true }, ' · ' + resto.join(' · '));
+        caixa.append(mais, h('button', { type: 'button', class: 'link-discreto', onclick: (e) => {
+          mais.hidden = !mais.hidden; e.currentTarget.textContent = mais.hidden ? `+${resto.length}` : 'menos';
+        } }, `+${resto.length}`));
+      }
+      itens.push(caixa);
+    }
+    return h('div', { class: 'nomes' }, itens.map((x) => Array.isArray(x) ? h('p', { class: 'nome-extra' }, h('span', null, x[0]), x[1]) : x));
   }
 
   function indicacao(t) {
     const quem = estado.catalogo.membros.find((m) => m.id === t.adicionado_por);
     const pode = t.adicionado_por === estado.membro.id || estado.membro.admin;
     return h('div', { class: 'indicacao' },
-      quem ? h('p', null, 'Indicado por ', h('strong', null, quem.nome), t.recado ? ': ' : '', t.recado ? h('em', null, '“' + t.recado + '”') : '') : null,
-      pode ? h('button', { type: 'button', class: 'btn-mini', title: 'Editar categoria e recado', 'aria-label': 'Editar categoria e recado', onclick: (e) => editarTitulo(e.currentTarget.parentElement, t) }, icone('editar', 14)) : null
+      h('small', null, 'Indicado por'),
+      h('div', { class: 'indicador' },
+        quem ? avatar(quem, { tamanho: 36 }) : null,
+        h('div', { class: 'indicador-texto' },
+          h('strong', null, quem ? quem.nome : '—'),
+          t.recado ? h('em', null, '“' + t.recado + '”') : null),
+        pode ? h('button', { type: 'button', class: 'btn-mini', title: 'Editar categoria e recado', 'aria-label': 'Editar categoria e recado',
+          onclick: (e) => { const tile = e.currentTarget.closest('.tile'); if (tile) tile.classList.add('editando'); editarTitulo(e.currentTarget.closest('.indicacao'), t); } }, icone('editar', 14)) : null
+      )
     );
   }
 
@@ -105,42 +144,49 @@ export function telaTitulo({ raiz, ativa, params }) {
         h('button', { type: 'button', class: 'btn-sec', onclick: desenhar }, 'Cancelar'))));
   }
 
-  function painelGrupo(t, linhas, membros, media) {
+  function painelGrupo(t, linhas, membros, contagem) {
     const porMembro = Object.fromEntries(linhas.map((s) => [s.membro_id, s]));
-    const ordenados = membros.slice().sort((a, b) => {
-      const sa = porMembro[a.id], sb = porMembro[b.id];
-      const oa = sa ? ORDEM_STATUS[sa.status] : 9, ob = sb ? ORDEM_STATUS[sb.status] : 9;
-      return oa - ob || a.nome.localeCompare(b.nome, 'pt-BR');
-    });
-    return h('div', { class: 'card grupo' },
-      h('div', { class: 'titulo-linha pequeno' },
-        h('h2', null, 'Status do grupo'),
-        media !== null ? h('p', { class: 'media' }, 'Média do grupo: ', h('strong', null, '★ ' + formatarNota(media))) : null
-      ),
-      h('ul', { class: 'lista-membros' }, ordenados.map((m) => {
-        const s = porMembro[m.id];
-        const cor = s ? COR_STATUS[s.status] : 'var(--borda2)';
-        const prog = s && t.tipo === 'serie' && s.temporada_atual && s.episodio_atual ? `T${s.temporada_atual} · E${s.episodio_atual}` : '';
-        return h('li', { class: 'membro-linha' + (s ? '' : ' sem-status') },
-          avatar(m, { tamanho: 40, cor }),
-          h('div', { class: 'membro-info' },
-            h('div', { class: 'membro-topo' },
-              h('strong', null, m.nome + (m.id === estado.membro.id ? ' (você)' : '')),
-              s ? h('span', { class: 'pill-status', style: { color: cor, borderColor: cor } }, ROTULOS[s.status]) : h('span', { class: 'suave' }, 'Ainda não marcou'),
-              prog ? h('span', { class: 'suave' }, prog) : null
-            ),
-            ...(s && s.comentario ? [h('p', { class: 'comentario' }, s.comentario),
-              estado.membro.admin && m.id !== estado.membro.id ? h('button', { type: 'button', class: 'link-discreto', onclick: async (e) => {
-                if (!confirm('Apagar este comentário? A nota é mantida.')) return;
-                try {
-                  await chamar('admin_limpar_comentario', { titulo_id: t.id, membro_id: m.id });
-                  s.comentario = ''; const p = e.target.previousElementSibling; if (p) p.remove(); e.target.remove(); avisar('Comentário apagado.');
-                } catch (err) { avisar(err.message, 'erro'); }
-              } }, 'Apagar comentário (moderação)') : null] : [])
-          ),
-          s && s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null
-        );
-      }))
+    const marcaram = membros.filter((m) => porMembro[m.id]).sort((a, b) =>
+      ORDEM_STATUS[porMembro[a.id].status] - ORDEM_STATUS[porMembro[b.id].status] || a.nome.localeCompare(b.nome, 'pt-BR'));
+    const faltam = membros.filter((m) => !porMembro[m.id]).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    const barra = linhas.length ? h('div', { class: 'barra-grupo', role: 'img', 'aria-label': 'Distribuição dos status do grupo' },
+      ['visto', 'assistindo', 'quero_ver', 'abandonado'].filter((k) => contagem[k]).map((k) =>
+        h('span', { style: { flex: String(contagem[k]), background: COR_STATUS[k] }, title: `${contagem[k]} ${ROTULOS[k].toLowerCase()}` })),
+      faltam.length ? h('span', { class: 'resto', style: { flex: String(faltam.length) }, title: faltam.length + ' sem marcar' }) : null) : null;
+
+    const cartaoMembro = (m) => {
+      const s = porMembro[m.id];
+      const cor = COR_STATUS[s.status];
+      const prog = t.tipo === 'serie' && s.temporada_atual && s.episodio_atual ? `Temporada ${s.temporada_atual} · episódio ${s.episodio_atual}` : '';
+      const comentario = s.comentario ? [
+        h('blockquote', { class: 'comentario' }, s.comentario),
+        estado.membro.admin && m.id !== estado.membro.id ? h('button', { type: 'button', class: 'link-discreto', onclick: async (e) => {
+          if (!confirm('Apagar este comentário? A nota é mantida.')) return;
+          try {
+            await chamar('admin_limpar_comentario', { titulo_id: t.id, membro_id: m.id });
+            s.comentario = ''; const q = e.target.previousElementSibling; if (q) q.remove(); e.target.remove(); avisar('Comentário apagado.');
+          } catch (err) { avisar(err.message, 'erro'); }
+        } }, 'Apagar comentário (moderação)') : null] : [];
+      return h('li', { class: 'mb-card', style: { '--cor': cor } },
+        h('div', { class: 'mb-topo' },
+          avatar(m, { tamanho: 44, cor }),
+          h('div', { class: 'mb-quem' },
+            h('strong', null, m.nome + (m.id === estado.membro.id ? ' (você)' : '')),
+            h('span', { class: 'pill-status', style: { color: cor, borderColor: cor } }, ROTULOS[s.status])),
+          s.nota !== null ? h('span', { class: 'mb-nota' }, h('small', null, 'nota'), '★ ' + formatarNota(s.nota)) : null),
+        prog ? h('p', { class: 'mb-prog' }, prog) : null,
+        ...comentario);
+    };
+
+    return h('div', { class: 'grupo-painel' },
+      h('div', { class: 'grupo-topo' },
+        h('h2', null, h('span', { class: 'ico-ouro' }, icone('amigos', 20)), 'A galera'),
+        linhas.length ? h('span', { class: 'suave' }, `${linhas.length} de ${membros.length} já marcaram`) : null),
+      barra,
+      marcaram.length ? h('ul', { class: 'mb-grade' }, marcaram.map(cartaoMembro)) : h('p', { class: 'suave' }, 'Ninguém marcou este título ainda. Seja a primeira pessoa!'),
+      faltam.length && marcaram.length ? h('div', { class: 'faltam' }, h('small', null, 'Ainda não marcaram'),
+        h('div', { class: 'faltam-avatares' }, faltam.map((m) => h('span', { class: 'faltam-item', title: m.nome }, avatar(m, { tamanho: 30 }), h('span', null, m.nome))))) : null
     );
   }
 
