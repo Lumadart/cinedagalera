@@ -53,7 +53,21 @@ export function telaAdmin({ raiz, ativa }) {
         return h('li', { class: 'membro-adm' },
           h('span', { class: 'mini-capa' }, capa(t)),
           h('div', { class: 'membro-info' },
-            h('strong', null, t.nome), h('div', { class: 'suave pequeno' }, [rotuloCategoria(t), t.ano, por ? 'indicado por ' + por.nome : null].filter(Boolean).join(' · ')),
+            h('strong', null, t.nome), h('div', { class: 'suave pequeno' }, [rotuloCategoria(t), t.ano].filter(Boolean).join(' · ')),
+            h('label', { class: 'indicador-adm' }, 'Indicado por',
+              (() => {
+                const sel = h('select', { 'aria-label': 'Quem indicou ' + t.nome },
+                  !por ? h('option', { value: '' }, '(sem indicador)') : null,
+                  estado.catalogo.membros.map((m) => h('option', { value: m.id }, m.nome)));
+                sel.value = por ? por.id : '';
+                sel.addEventListener('change', async () => {
+                  try {
+                    const r = await chamar('admin_atribuir_indicacao', { titulo_id: t.id, membro_id: sel.value });
+                    Object.assign(t, r.titulo); avisar('Indicação atualizada.'); pintar();
+                  } catch (err) { avisar(err.message, 'erro'); sel.value = por ? por.id : ''; }
+                });
+                return sel;
+              })()),
             h('div', { class: 'suave pequeno' }, `${marcacoes} ${marcacoes === 1 ? 'marcação' : 'marcações'}`)),
           h('div', { class: 'acoes' },
             h('a', { class: 'btn-sec', href: '#/titulo/' + t.id }, 'Abrir'),

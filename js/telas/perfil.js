@@ -1,12 +1,12 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
-import { casca, avatar, banner, capa, COR_STATUS, formatarNota, haQuanto } from '../ui.js';
+import { casca, esqueleto, avatar, banner, capa, COR_STATUS, formatarNota, haQuanto } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const ABAS = [['lista', 'Minha lista'], ['vistos', 'Vistos'], ['indicacoes', 'Indicações']];
 
 export function telaPerfil({ raiz, ativa, params }) {
-  const area = h('div', { class: 'perfil' }, h('p', { class: 'suave' }, 'Carregando…'));
+  const area = h('div', { class: 'perfil' }, esqueleto('lista', 4));
   const id = params.id || estado.membro.id;
   let aba = 'lista';
   montar(raiz, casca('perfil', area));
@@ -40,14 +40,14 @@ export function telaPerfil({ raiz, ativa, params }) {
 
     const paineis = {
       lista: () => [
-        bloco('Está assistindo', null, de('assistindo').length ? linha(de('assistindo').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('Nada em andamento.')),
-        bloco('Quero ver', null, de('quero_ver').length ? linha(de('quero_ver').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('A lista de desejos está vazia.')),
-        ...(de('abandonado').length ? [bloco('Abandonados', null, linha(de('abandonado').sort(recente).map((s) => poster(porId[s.titulo_id], s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null))))] : [])
+        bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('play', 20)), 'Está assistindo'), null, de('assistindo').length ? linha(de('assistindo').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('Nada em andamento.')),
+        bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('marcador', 20)), 'Quero ver'), null, de('quero_ver').length ? linha(de('quero_ver').sort(recente).map((s) => poster(porId[s.titulo_id]))) : vazio('A lista de desejos está vazia.')),
+        ...(de('abandonado').length ? [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('fechar', 20)), 'Abandonados'), null, linha(de('abandonado').sort(recente).map((s) => poster(porId[s.titulo_id], s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null))))] : [])
       ],
-      vistos: () => [bloco('Vistos', 'Do mais recente para o mais antigo',
+      vistos: () => [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('check', 20)), 'Vistos'), 'Do mais recente para o mais antigo',
         de('visto').length ? linha(de('visto').sort((a, b) => String(b.visto_em || b.atualizado_em).localeCompare(String(a.visto_em || a.atualizado_em)))
           .map((s) => poster(porId[s.titulo_id], s.nota !== null ? h('span', { class: 'nota' }, '★ ' + formatarNota(s.nota)) : null))) : vazio('Nenhum título visto ainda.'))],
-      indicacoes: () => [bloco('Indicações', 'Títulos que ' + (meu ? 'você colocou' : 'a pessoa colocou') + ' no catálogo',
+      indicacoes: () => [bloco(h('span', { class: 'tit-ico' }, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Indicações'), 'Títulos que ' + (meu ? 'você colocou' : 'a pessoa colocou') + ' no catálogo',
         indicados.length ? linha(indicados.map((t) => poster(t))) : vazio('Nenhuma indicação ainda.'))]
     };
     const tabs = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Seções do perfil' },

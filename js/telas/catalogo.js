@@ -2,7 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { cartaoTitulo, fecharMenus } from '../cartao.js';
 import {
-  casca, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, ICONE_STATUS, normalizar, tituloMeta, CATEGORIAS, rotuloCategoria
+  casca, esqueleto, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, ICONE_STATUS, normalizar, tituloMeta, CATEGORIAS, rotuloCategoria
 } from '../ui.js';
 
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
@@ -94,7 +94,7 @@ export function telaCatalogo({ raiz, ativa }) {
   if (estado.catalogo) {
     desenharFiltros(); desenharGrade();
   } else {
-    montar(avisoEl, h('p', null, 'Carregando o catálogo…'));
+    montar(avisoEl, esqueleto('grade', 10));
   }
   carregarCatalogo()
     .then(() => { if (ativa()) { desenharFiltros(); desenharGrade(); } })

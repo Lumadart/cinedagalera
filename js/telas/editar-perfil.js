@@ -2,10 +2,10 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
 import { ajustarImagem } from '../imagem.js';
-import { casca, avatar, banner, avisar, capa, normalizar, sair } from '../ui.js';
+import { casca, esqueleto, avatar, banner, avisar, capa, normalizar, sair } from '../ui.js';
 
 export function telaEditarPerfil({ raiz, ativa }) {
-  const area = h('div', { class: 'editar' }, h('p', { class: 'suave' }, 'Carregando…'));
+  const area = h('div', { class: 'editar' }, esqueleto('lista', 3));
   montar(raiz, casca('perfil', area));
   if (estado.catalogo) desenhar();
   carregarCatalogo().then(() => { if (ativa()) desenhar(); }).catch((e) => {

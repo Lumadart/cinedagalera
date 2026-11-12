@@ -2,7 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, aplicarStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
 import { cartaoTitulo } from '../cartao.js';
-import { casca, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, CATEGORIAS, rotuloCategoria, haQuanto } from '../ui.js';
+import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, CATEGORIAS, rotuloCategoria, haQuanto } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
@@ -11,7 +11,7 @@ let faixaModo = 'recentes'; // 'recentes' | 'queridos'
 let slideAtual = 0; // lembra o destaque ao redesenhar a tela
 
 export function telaInicio({ raiz, ativa }) {
-  const conteudo = h('div', { class: 'inicio' }, h('p', { class: 'suave' }, 'Carregando…'));
+  const conteudo = h('div', { class: 'inicio' }, esqueleto('grade', 6));
   montar(raiz, casca('inicio', conteudo));
   let timer = null;
 
@@ -101,7 +101,7 @@ export function telaInicio({ raiz, ativa }) {
       : recentes.slice(0, 6);
     const aba = (id, texto) => h('button', { type: 'button', class: 'chip' + (faixaModo === id ? ' ligado' : ''), 'aria-pressed': String(faixaModo === id), onclick: () => { faixaModo = id; desenhar(); } }, texto);
     return h('section', { class: 'bloco-home' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, faixaModo === 'queridos' ? 'Mais querem ver' : 'Últimos adicionados'),
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone(faixaModo === 'queridos' ? 'coracao' : 'novo', 20)), 'Destaques da galera'),
         h('div', { class: 'filtros' }, aba('recentes', 'Últimos adicionados'), aba('queridos', 'Mais querem ver'))),
       lista.length ? h('div', { class: 'faixa' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar })))
         : h('p', { class: 'suave' }, 'Ninguém marcou “quero ver” ainda.'));
@@ -112,7 +112,7 @@ export function telaInicio({ raiz, ativa }) {
       .filter((s) => s.membro_id === estado.membro.id && s.status === 'assistindo' && porId[s.titulo_id])
       .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em))).slice(0, 3);
     return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, 'Está assistindo'), h('a', { href: '#/perfil' }, 'Ver todos →')),
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('play', 20)), 'Está assistindo'), h('a', { href: '#/perfil' }, 'Ver todos →')),
       meus.length ? h('ul', { class: 'mini-lista' }, meus.map((s) => {
         const t = porId[s.titulo_id];
         const prog = t.tipo === 'serie' && s.temporada_atual && s.episodio_atual ? `T${s.temporada_atual} · Ep. ${s.episodio_atual}` : rotuloCategoria(t);
@@ -126,7 +126,7 @@ export function telaInicio({ raiz, ativa }) {
     const lista = recentes.filter((t) => filtroCat === 'todos' || t.categoria === filtroCat).slice(0, 10);
     const pill = (id, texto) => h('button', { type: 'button', class: 'chip' + (filtroCat === id ? ' ligado' : ''), 'aria-pressed': String(filtroCat === id), onclick: () => { filtroCat = id; desenhar(); } }, texto);
     return h('section', { class: 'bloco-home' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ouro' }, icone('grade', 22)), ' Catálogo'),
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('grade', 20)), 'Catálogo'),
         h('div', { class: 'filtros' }, pill('todos', 'Todos'), presentes.map((c) => pill(c, PLURAL[c])))),
       lista.length ? h('div', { class: 'grade' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar }))) : h('p', { class: 'suave' }, 'Ainda não há títulos.'),
       recentes.length > 10 ? h('p', { class: 'ver-tudo' }, h('a', { class: 'btn-sec', href: '#/catalogo' }, 'Ver o catálogo completo')) : null);
@@ -138,7 +138,7 @@ export function telaInicio({ raiz, ativa }) {
     titulos.forEach((t) => { if (t.criado_em && quem[t.adicionado_por]) eventos.push({ quando: t.criado_em, m: quem[t.adicionado_por], t, txt: 'indicou', cor: 'var(--ouro)' }); });
     eventos.sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
     return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ouro' }, '⚡'), ' Atividade recente')),
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('raio', 20)), 'Atividade recente')),
       eventos.length ? h('ul', { class: 'atividade' }, eventos.slice(0, 5).map((e) =>
         h('li', null, avatar(e.m, { tamanho: 36, cor: e.cor }),
           h('div', { class: 'at-texto' }, h('span', null, h('strong', null, e.m.nome.split(' ')[0]), ' ' + e.txt + ' ', h('a', { href: '#/titulo/' + e.t.id }, e.t.nome)),
@@ -150,7 +150,7 @@ export function telaInicio({ raiz, ativa }) {
     const meus = estado.catalogo.status.filter((s) => s.membro_id === estado.membro.id && s.status === 'quero_ver' && porId[s.titulo_id])
       .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em))).slice(0, 3);
     return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, 'Quero ver'), h('a', { href: '#/perfil' }, 'Ver todos →')),
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('marcador', 20)), 'Quero ver'), h('a', { href: '#/perfil' }, 'Ver todos →')),
       meus.length ? h('ul', { class: 'mini-lista' }, meus.map((s) => { const t = porId[s.titulo_id];
         return h('li', null, h('a', { href: '#/titulo/' + t.id }, h('span', { class: 'mini-capa' }, capa(t)), h('span', null, h('strong', null, t.nome), h('small', null, rotuloCategoria(t) + (t.ano ? ' · ' + t.ano : ''))))); }))
         : h('p', { class: 'suave' }, 'Use o “+” nos títulos para montar sua lista.'));

@@ -23,7 +23,7 @@ export function banner(membro) {
   const el = h('div', { class: 'banner', style: { background: BANNERS[membro.banner_preset] || BANNERS.ameixa } });
   const foto = seguro(membro.banner_url);
   if (foto) {
-    const img = h('img', { src: foto, alt: '', referrerpolicy: 'no-referrer' });
+    const img = suave(h('img', { src: foto, alt: '', referrerpolicy: 'no-referrer' }));
     img.addEventListener('error', () => img.remove());
     el.append(img);
   }
@@ -83,7 +83,8 @@ export function avatar(membro, { tamanho = 36, cor = null, dica = null } = {}) {
 /** Imagem em paisagem (TMDB backdrop). Se o título não tiver, usa a capa. */
 export function fundoImg(titulo, classe = 'fundo-img') {
   const src = seguro(titulo.fundo_url) || seguro(titulo.capa_url);
-  return src ? h('img', { class: classe, src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null;
+  if (!src) return null;
+  return suave(h('img', { class: classe, src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }));
 }
 
 export function capa(titulo) {
@@ -91,6 +92,7 @@ export function capa(titulo) {
   const foto = seguro(titulo.capa_url);
   if (foto) {
     const img = h('img', { src: foto, alt: 'Capa de ' + titulo.nome, loading: 'lazy', referrerpolicy: 'no-referrer' });
+    suave(img);
     img.addEventListener('error', () => { img.remove(); el.classList.add('sem-imagem'); el.append(titulo.nome); });
     el.append(img);
   } else {
@@ -211,4 +213,22 @@ export function detalheTitulo(t) {
   if (t.temporadas) p.push(t.temporadas + (t.temporadas === 1 ? ' temp.' : ' temps.'));
   if (t.episodios) p.push(t.episodios + (t.episodios === 1 ? ' ep.' : ' eps.'));
   return p.join(' · ');
+}
+
+
+/** Imagem que aparece com um fade quando termina de carregar (em vez de "pular" na tela). */
+export function suave(img) {
+  img.classList.add('img-suave');
+  const pronta = () => img.classList.add('pronta');
+  if (img.complete && img.naturalWidth) pronta(); else img.addEventListener('load', pronta, { once: true });
+  img.addEventListener('error', pronta, { once: true });
+  return img;
+}
+
+/** Blocos cinza "respirando" enquanto os dados chegam. */
+export function esqueleto(tipo = 'grade', n = 6) {
+  if (tipo === 'lista') return h('div', { class: 'esq-lista', 'aria-busy': 'true', 'aria-label': 'Carregando' },
+    Array.from({ length: n }, () => h('div', { class: 'esq esq-linha' })));
+  return h('div', { class: 'esq-grade', 'aria-busy': 'true', 'aria-label': 'Carregando' },
+    Array.from({ length: n }, () => h('div', { class: 'esq esq-card' })));
 }

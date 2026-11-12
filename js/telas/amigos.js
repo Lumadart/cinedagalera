@@ -1,9 +1,9 @@
 import { h, montar } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
-import { casca, avatar, banner, capa } from '../ui.js';
+import { casca, esqueleto, avatar, banner, capa } from '../ui.js';
 
 export function telaAmigos({ raiz, ativa }) {
-  const area = h('div', { class: 'amigos' }, h('p', { class: 'suave' }, 'Carregando…'));
+  const area = h('div', { class: 'amigos' }, esqueleto('grade', 4));
   montar(raiz, casca('amigos', area));
   if (estado.catalogo) desenhar();
   carregarCatalogo().then(() => { if (ativa()) desenhar(); }).catch((e) => {
