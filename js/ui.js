@@ -1,5 +1,6 @@
 import { h, icone } from './dom.js';
 import { estado, limparCatalogo } from './estado.js';
+import { limparEventos } from './eventos.js';
 import { chamar } from './api.js';
 import { apagarToken } from './sessao.js';
 import { NOME_DO_GRUPO } from './config.js';
@@ -113,7 +114,7 @@ export async function sair() {
   try { await chamar('sair'); } catch (_) { /* sai mesmo se o servidor não responder */ }
   apagarToken();
   estado.membro = null;
-  limparCatalogo();
+  limparCatalogo(); limparEventos();
   location.hash = '#/entrar';
 }
 
@@ -167,7 +168,6 @@ function menuImagem() {
 export function casca(rota, conteudo, { aoBuscar = null } = {}) {
   const item = (id, href, texto, ico) =>
     h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, icone(ico, 20), h('span', null, texto));
-  const emBreve = (texto, ico) => h('span', { class: 'item desativado', 'aria-disabled': 'true' }, icone(ico, 20), h('span', null, texto), h('small', null, 'em breve'));
   const m = estado.membro;
 
   return h('div', { class: 'casca' },
@@ -179,7 +179,7 @@ export function casca(rota, conteudo, { aoBuscar = null } = {}) {
         item('adicionar', '#/adicionar', 'Adicionar título', 'mais'),
         item('perfil', '#/perfil', 'Meu perfil', 'marcador'),
         item('amigos', '#/amigos', 'Amigos', 'amigos'),
-        emBreve('Eventos', 'calendario'),
+        item('eventos', '#/eventos', 'Eventos', 'calendario'),
         m && m.admin ? item('admin', '#/admin', 'Administração', 'escudo') : null
       ),
       menuImagem()
