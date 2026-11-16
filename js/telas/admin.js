@@ -1,9 +1,10 @@
-import { h, montar } from '../dom.js';
+import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
 import { casca, esqueleto, avatar, avisar, capa, normalizar, rotuloCategoria } from '../ui.js';
 import { medalha } from '../badges.js';
-import { carregarEventos, limparEventos, dataLonga, TIPOS_EVENTO } from '../eventos.js';
+import { carregarEventos, limparEventos, dataLonga, colagem, TIPOS_EVENTO } from '../eventos.js';
+import { ajustarImagem } from '../imagem.js';
 
 function quando(iso) {
   if (!iso) return 'nunca';
@@ -67,18 +68,37 @@ export function telaAdmin({ raiz, ativa }) {
     return { el: h('div', { class: 'seletor' }, campo, sugestoes, chips), valor: () => [...escolhidos] };
   }
 
+  let gaveta = null; // qual formulário está aberto na aba Eventos: 'evento' | 'votacao' | 'discord'
+  let editando = null;
+
   async function abaEventos() {
     montar(painel, h('p', { class: 'suave' }, 'Carregando…'));
     let d;
     try { await carregarCatalogo(); d = await carregarEventos({ forcar: true }); } catch (e) { if (ativa()) montar(painel, h('p', { class: 'erro' }, e.message)); return; }
     if (!ativa()) return;
-    const refazer = () => { limparEventos(); abaEventos(); };
+    const refazer = (fechar = true) => { if (fechar) { gaveta = null; editando = null; } limparEventos(); abaEventos(); };
     const nomeDe = (id) => { const t = estado.catalogo.titulos.find((x) => x.id === id); return t ? t.nome : '(removido)'; };
+    const abrir = (g, e = null) => { gaveta = g; editando = e; abaEventos(); };
 
-    // --- formulário de evento ---
+    // --- evento (criar / editar) ---
     function formEvento(e) {
       const sel = seletorTitulos(e ? e.titulos : [], 30);
-      const f = {
+      let imagem; // undefined = não mexer · texto = nova imagem · null = remover
+      const previa = h('div', { class: 'campo-imagem-previa' });
+      const pintarPrevia = () => {
+        const url = imagem === null ? '' : (imagem || (e ? e.imagem_url : ''));
+        montar(previa, url ? h('img', { src: url, alt: 'Imagem do evento', referrerpolicy: 'no-referrer' }) : h('span', { class: 'suave pequeno' }, 'Sem imagem — o evento usa a colagem das capas.'));
+      };
+      const arquivo = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', class: 'sr-only', id: 'ev-imagem', onchange: async (ev) => {
+        const f = ev.target.files[0]; ev.target.value = '';
+        if (!f) return;
+        try {
+          const r = await ajustarImagem(f, 1200, 675, { titulo: 'Ajustar imagem do evento' });
+          if (r) { imagem = r; pintarPrevia(); }
+        } catch (err) { avisar(err.message, 'erro'); }
+      } });
+      pintarPrevia();
+      const campo = {
         nome: h('input', { type: 'text', maxlength: 80, value: e ? e.nome : '', required: true }),
         tipo: h('select', null, Object.entries(TIPOS_EVENTO).map(([k, r]) => h('option', { value: k }, r))),
         tema: h('input', { type: 'text', maxlength: 60, value: e ? e.tema : '', placeholder: 'Ex.: Halloween, Natal…' }),
@@ -88,34 +108,41 @@ export function telaAdmin({ raiz, ativa }) {
         descricao: h('textarea', { rows: 3, maxlength: 600 }, e ? e.descricao : ''),
         avisar: h('input', { type: 'checkbox', checked: !e })
       };
-      if (e) f.tipo.value = e.tipo;
+      if (e) campo.tipo.value = e.tipo;
       const msg = h('p', { class: 'erro', role: 'alert' });
       const form = h('form', { class: 'painel-discreto form-evento', onsubmit: async (ev) => {
         ev.preventDefault(); msg.textContent = '';
         const botao = form.querySelector('button[type=submit]'); botao.disabled = true;
+        const corpo = {
+          id: e ? e.id : undefined, nome: campo.nome.value, tipo: campo.tipo.value, tema: campo.tema.value, inicio: paraIso(campo.inicio.value), fim: paraIso(campo.fim.value),
+          local: campo.local.value, descricao: campo.descricao.value, titulos: sel.valor(), avisar: campo.avisar.checked
+        };
+        if (imagem) corpo.imagem = imagem; else if (imagem === null) corpo.remover_imagem = true;
         try {
-          const r = await chamar('admin_evento_salvar', {
-            id: e ? e.id : undefined, nome: f.nome.value, tipo: f.tipo.value, tema: f.tema.value, inicio: paraIso(f.inicio.value), fim: paraIso(f.fim.value),
-            local: f.local.value, descricao: f.descricao.value, titulos: sel.valor(), avisar: f.avisar.checked
-          });
-          avisar(e ? 'Evento atualizado.' : 'Evento criado.' + (r.discord ? ' Aviso enviado ao Discord.' : '')); refazer();
+          const r = await chamar('admin_evento_salvar', corpo);
+          avisar((e ? 'Evento atualizado.' : 'Evento criado.') + (r.discord ? ' Aviso enviado ao Discord.' : '')); refazer();
         } catch (err) { msg.textContent = err.message; botao.disabled = false; }
       } },
-        h('h2', { class: 'mini' }, e ? 'Editar evento' : 'Novo evento'),
-        h('label', null, 'Nome', f.nome),
-        h('div', { class: 'duas-colunas' }, h('label', null, 'Tipo', f.tipo), h('label', null, 'Tema (opcional)', f.tema)),
-        h('div', { class: 'duas-colunas' }, h('label', null, 'Início', f.inicio), h('label', null, 'Término (opcional)', f.fim)),
-        h('label', null, 'Local (opcional)', f.local),
-        h('label', null, 'Descrição (opcional)', f.descricao),
+        h('h2', null, e ? 'Editar evento' : 'Novo evento'),
+        h('label', null, 'Nome', campo.nome),
+        h('div', { class: 'duas-colunas' }, h('label', null, 'Tipo', campo.tipo), h('label', null, 'Tema (opcional)', campo.tema)),
+        h('div', { class: 'duas-colunas' }, h('label', null, 'Início', campo.inicio), h('label', null, 'Término (opcional)', campo.fim)),
+        h('label', null, 'Local (opcional)', campo.local),
+        h('label', null, 'Descrição (opcional)', campo.descricao),
+        h('div', { class: 'campo-imagem' },
+          h('span', { class: 'rotulo' }, 'Imagem do evento (opcional, 1200 × 675)'), previa,
+          h('div', { class: 'acoes' },
+            h('label', { class: 'btn-sec', for: 'ev-imagem' }, icone('editar', 16), 'Escolher imagem'),
+            h('button', { type: 'button', class: 'btn-sec', onclick: () => { imagem = null; pintarPrevia(); } }, 'Remover'), arquivo)),
         h('div', null, h('span', { class: 'rotulo' }, 'Títulos do evento'), sel.el),
-        h('label', { class: 'check' }, f.avisar, ' Avisar no Discord'),
+        h('label', { class: 'check' }, campo.avisar, ' Avisar no Discord'),
         msg,
         h('div', { class: 'acoes' }, h('button', { type: 'submit', class: 'btn-primario' }, e ? 'Salvar' : 'Criar evento'),
-          e ? h('button', { type: 'button', class: 'btn-sec', onclick: () => { limparEventos(); abaEventos(); } }, 'Cancelar') : null));
+          h('button', { type: 'button', class: 'btn-sec', onclick: () => refazer() }, 'Cancelar')));
       return form;
     }
 
-    // --- formulário de votação ---
+    // --- votação ---
     function formVotacao() {
       const sel = seletorTitulos([], 10);
       const pergunta = h('input', { type: 'text', maxlength: 120, placeholder: 'Ex.: Qual filme abre a maratona?', required: true });
@@ -131,71 +158,82 @@ export function telaAdmin({ raiz, ativa }) {
           avisar('Votação aberta.'); refazer();
         } catch (err) { msg.textContent = err.message; botao.disabled = false; }
       } },
-        h('h2', { class: 'mini' }, 'Nova votação'),
+        h('h2', null, 'Nova votação'),
         h('label', null, 'Pergunta', pergunta),
         h('div', null, h('span', { class: 'rotulo' }, 'Opções (de 2 a 10 títulos)'), sel.el),
-        h('div', { class: 'duas-colunas' }, h('label', null, 'Evento ligado', evento), h('label', null, 'Prazo (opcional)', prazo)),
+        h('div', { class: 'duas-colunas' }, h('label', null, 'Evento ligado (opcional)', evento), h('label', null, 'Prazo (opcional)', prazo)),
         h('label', { class: 'check' }, av, ' Avisar no Discord'),
-        msg, h('div', { class: 'acoes' }, h('button', { type: 'submit', class: 'btn-primario' }, 'Abrir votação')));
+        msg, h('div', { class: 'acoes' }, h('button', { type: 'submit', class: 'btn-primario' }, 'Abrir votação'), h('button', { type: 'button', class: 'btn-sec', onclick: () => refazer() }, 'Cancelar')));
       return form;
     }
 
-    const ligado = d.eventos.slice().sort((a, b) => b.inicio.localeCompare(a.inicio));
-    const lista = h('ul', { class: 'lista-adm' }, ligado.map((e) => h('li', { class: 'membro-adm' },
-      h('div', { class: 'membro-info' }, h('strong', null, e.nome, e.cancelado ? h('small', { class: 'suave' }, ' (cancelado)') : null),
-        h('div', { class: 'suave pequeno' }, `${TIPOS_EVENTO[e.tipo]} · ${dataLonga(e.inicio)} · ${Object.values(e.presencas).filter((x) => x === 'vou').length} vão`)),
+    // --- Discord + link do site ---
+    function formDiscord() {
+      const url = h('input', { type: 'url', placeholder: 'https://discord.com/api/webhooks/…', autocomplete: 'off', 'aria-label': 'Link do webhook do Discord' });
+      const site = h('input', { type: 'url', placeholder: 'https://seu-usuario.github.io/seu-site/', autocomplete: 'off', value: d.site_url || location.href.replace(/#.*$/, ''), 'aria-label': 'Endereço do site' });
+      const msgD = h('p', { class: 'erro', role: 'alert' });
+      return h('section', { class: 'painel-discreto form-evento' },
+        h('h2', null, 'Discord e link do site'),
+        h('p', { class: 'suave' }, d.discord_configurado ? '✓ Discord conectado. Eventos e votações são avisados no canal.' : 'Discord ainda não conectado. No canal: Configurações → Integrações → Webhooks → Novo webhook → Copiar URL.'),
+        h('label', null, d.discord_configurado ? 'Trocar o link do webhook' : 'Link do webhook', url),
+        h('div', { class: 'acoes' },
+          h('button', { type: 'button', class: 'btn-primario', onclick: async () => {
+            msgD.textContent = '';
+            try { await chamar('admin_discord_configurar', { url: url.value.trim() }); avisar('Discord conectado.'); refazer(false); } catch (err) { msgD.textContent = err.message; } } }, 'Salvar webhook'),
+          d.discord_configurado ? h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
+            try { await chamar('admin_discord_testar'); avisar('Mensagem de teste enviada.'); } catch (err) { msgD.textContent = err.message; } } }, 'Enviar teste') : null,
+          d.discord_configurado ? h('button', { type: 'button', class: 'btn-sec perigo', onclick: async () => {
+            try { await chamar('admin_discord_configurar', { url: '' }); avisar('Discord desconectado.'); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Desconectar') : null),
+        h('label', null, 'Endereço do site (vai como link nos avisos do Discord e no e-mail do PIN)', site),
+        h('div', { class: 'acoes' }, h('button', { type: 'button', class: 'btn-primario', onclick: async () => {
+          msgD.textContent = '';
+          try { await chamar('admin_site_configurar', { url: site.value.trim() }); avisar('Endereço do site salvo.'); refazer(false); } catch (err) { msgD.textContent = err.message; } } }, 'Salvar endereço')),
+        msgD);
+    }
+
+    // --- listas ---
+    const lista = d.eventos.slice().sort((a, b) => b.inicio.localeCompare(a.inicio));
+    const cartaoEvento = (e) => h('li', { class: 'adm-evento' + (e.cancelado ? ' cancelado' : '') },
+      h('div', { class: 'adm-ev-capa' }, colagem(e)),
+      h('div', { class: 'adm-ev-info' },
+        h('strong', null, e.nome, e.cancelado ? h('small', { class: 'suave' }, ' (cancelado)') : null),
+        h('span', { class: 'suave pequeno' }, `${TIPOS_EVENTO[e.tipo]} · ${dataLonga(e.inicio)}`),
+        h('span', { class: 'suave pequeno' }, `${Object.values(e.presencas).filter((x) => x === 'vou').length} vão · ${e.titulos.length} ${e.titulos.length === 1 ? 'título' : 'títulos'}`)),
       h('div', { class: 'acoes' },
-        h('button', { type: 'button', class: 'btn-sec', onclick: () => montar(slotForm, formEvento(e)) }, 'Editar'),
+        h('button', { type: 'button', class: 'btn-sec', onclick: () => abrir('evento', e) }, 'Editar'),
         h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
-          try { await chamar('admin_evento_salvar', { id: e.id, nome: e.nome, tipo: e.tipo, inicio: e.inicio, fim: e.fim, tema: e.tema, local: e.local, descricao: e.descricao, titulos: e.titulos, cancelado: !e.cancelado, avisar: false }); refazer(); }
+          try { await chamar('admin_evento_salvar', { id: e.id, nome: e.nome, tipo: e.tipo, inicio: e.inicio, fim: e.fim, tema: e.tema, local: e.local, descricao: e.descricao, titulos: e.titulos, cancelado: !e.cancelado, avisar: false }); refazer(false); }
           catch (err) { avisar(err.message, 'erro'); } } }, e.cancelado ? 'Reativar' : 'Cancelar'),
         h('button', { type: 'button', class: 'btn-sec perigo', onclick: async () => {
           if (!confirm(`Apagar “${e.nome}”? As confirmações de presença também serão apagadas.`)) return;
-          try { await chamar('admin_evento_apagar', { id: e.id }); avisar('Evento apagado.'); refazer(); } catch (err) { avisar(err.message, 'erro'); } } }, 'Apagar')))));
+          try { await chamar('admin_evento_apagar', { id: e.id }); avisar('Evento apagado.'); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Apagar')));
 
-    const listaVt = h('ul', { class: 'lista-adm' }, d.votacoes.slice().reverse().map((v) => {
-      const encerrar = async (vencedor) => {
-        try {
-          const r = await chamar('admin_votacao_encerrar', { votacao_id: v.id, vencedor_id: vencedor, adicionar_ao_evento: !!v.evento_id });
-          avisar('Votação encerrada.' + (r.no_evento ? ' Vencedor entrou no evento.' : '')); refazer();
-        } catch (err) { avisar(err.message, 'erro'); }
-      };
-      const total = v.contagem ? '' : '';
-      return h('li', { class: 'membro-adm' },
-        h('div', { class: 'membro-info' }, h('strong', null, v.pergunta),
-          h('div', { class: 'suave pequeno' }, `${v.encerrada ? 'Encerrada' : 'Aberta'} · ${v.total} ${v.total === 1 ? 'voto' : 'votos'}` + (v.vencedor ? ' · vencedor: ' + nomeDe(v.vencedor) : '') + total),
-          !v.encerrada ? h('label', { class: 'indicador-adm' }, 'Desempate / vencedor',
-            (() => { const s = h('select', null, h('option', { value: '' }, 'Pelo placar'), v.opcoes.map((id) => h('option', { value: id }, nomeDe(id)))); s.addEventListener('change', () => { s.dataset.v = s.value; }); s.className = 'sel-vencedor'; return s; })()) : null),
+    const cartaoVotacao = (v) => {
+      const sel = h('select', { class: 'sel-vencedor', 'aria-label': 'Vencedor (use em caso de empate)' }, h('option', { value: '' }, 'Vencedor pelo placar'), v.opcoes.map((id) => h('option', { value: id }, nomeDe(id))));
+      return h('li', { class: 'adm-evento adm-voto' },
+        h('div', { class: 'adm-ev-info' }, h('strong', null, v.pergunta),
+          h('span', { class: 'suave pequeno' }, `${v.encerrada ? 'Encerrada' : 'Aberta'} · ${v.total} ${v.total === 1 ? 'voto' : 'votos'}` + (v.vencedor ? ' · vencedor: ' + nomeDe(v.vencedor) : ''))),
         h('div', { class: 'acoes' },
-          !v.encerrada ? h('button', { type: 'button', class: 'btn-sec', onclick: (ev) => encerrar(ev.target.closest('li').querySelector('.sel-vencedor').value || undefined) }, 'Encerrar') : null,
+          !v.encerrada ? sel : null,
+          !v.encerrada ? h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
+            try { const r = await chamar('admin_votacao_encerrar', { votacao_id: v.id, vencedor_id: sel.value || undefined, adicionar_ao_evento: !!v.evento_id });
+              avisar('Votação encerrada.' + (r.no_evento ? ' O vencedor entrou no evento.' : '')); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Encerrar') : null,
           h('button', { type: 'button', class: 'btn-sec perigo', onclick: async () => {
             if (!confirm(`Apagar a votação “${v.pergunta}” e todos os votos?`)) return;
-            try { await chamar('admin_votacao_apagar', { votacao_id: v.id }); avisar('Votação apagada.'); refazer(); } catch (err) { avisar(err.message, 'erro'); } } }, 'Apagar')));
-    }));
+            try { await chamar('admin_votacao_apagar', { votacao_id: v.id }); avisar('Votação apagada.'); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Apagar')));
+    };
 
-    // --- Discord ---
-    const url = h('input', { type: 'url', placeholder: 'https://discord.com/api/webhooks/…', autocomplete: 'off', 'aria-label': 'Link do webhook do Discord' });
-    const msgD = h('p', { class: 'erro', role: 'alert' });
-    const discord = h('section', { class: 'painel-discreto' },
-      h('h2', { class: 'mini' }, 'Avisos no Discord'),
-      h('p', { class: 'suave' }, d.discord_configurado ? '✓ Conectado. Eventos e votações são avisados no canal.' : 'Ainda não conectado. No Discord: Configurações do canal → Integrações → Webhooks → Novo webhook → Copiar URL.'),
-      h('label', null, d.discord_configurado ? 'Trocar o link do webhook' : 'Link do webhook', url), msgD,
-      h('div', { class: 'acoes' },
-        h('button', { type: 'button', class: 'btn-primario', onclick: async () => {
-          msgD.textContent = '';
-          try { await chamar('admin_discord_configurar', { url: url.value.trim() }); avisar('Discord conectado.'); refazer(); } catch (err) { msgD.textContent = err.message; } } }, 'Salvar'),
-        d.discord_configurado ? h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
-          try { await chamar('admin_discord_testar'); avisar('Mensagem de teste enviada.'); } catch (err) { msgD.textContent = err.message; } } }, 'Enviar teste') : null,
-        d.discord_configurado ? h('button', { type: 'button', class: 'btn-sec perigo', onclick: async () => {
-          try { await chamar('admin_discord_configurar', { url: '' }); avisar('Discord desconectado.'); refazer(); } catch (err) { avisar(err.message, 'erro'); } } }, 'Desconectar') : null));
-
-    const slotForm = h('div', null, formEvento(null));
+    const botaoGaveta = (g, rotulo, ico) => h('button', { type: 'button', class: (gaveta === g ? 'btn-primario' : 'btn-sec'), onclick: () => (gaveta === g ? refazer() : abrir(g)) }, icone(ico, 16), rotulo);
     montar(painel,
-      h('div', { class: 'grade-eventos-adm' },
-        h('div', { class: 'col-adm' }, slotForm, formVotacao(), discord),
-        h('div', { class: 'col-adm' },
-          h('h2', { class: 'mini' }, 'Eventos'), ligado.length ? lista : h('p', { class: 'suave' }, 'Nenhum evento ainda.'),
-          h('h2', { class: 'mini' }, 'Votações'), d.votacoes.length ? listaVt : h('p', { class: 'suave' }, 'Nenhuma votação ainda.'))));
+      h('div', { class: 'barra-adm' },
+        botaoGaveta('evento', 'Novo evento', 'mais'), botaoGaveta('votacao', 'Nova votação', 'check'), botaoGaveta('discord', 'Discord e link do site', 'raio')),
+      gaveta === 'evento' ? formEvento(editando) : null,
+      gaveta === 'votacao' ? formVotacao() : null,
+      gaveta === 'discord' ? formDiscord() : null,
+      h('section', { class: 'bloco-adm' }, h('h2', { class: 'mini' }, `Eventos (${lista.length})`),
+        lista.length ? h('ul', { class: 'adm-lista' }, lista.map(cartaoEvento)) : h('p', { class: 'suave' }, 'Nenhum evento ainda. Use “Novo evento” acima.')),
+      h('section', { class: 'bloco-adm' }, h('h2', { class: 'mini' }, `Votações (${d.votacoes.length})`),
+        d.votacoes.length ? h('ul', { class: 'adm-lista' }, d.votacoes.slice().reverse().map(cartaoVotacao)) : h('p', { class: 'suave' }, 'Nenhuma votação ainda.')));
   }
 
   // ---------- Títulos: corrigir o catálogo ----------

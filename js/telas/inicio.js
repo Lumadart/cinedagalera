@@ -2,7 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, aplicarStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
 import { cartaoTitulo } from '../cartao.js';
-import { carregarEventos, dataLonga, contagem, jaComecou } from '../eventos.js';
+import { carregarEventos, dataLonga, contagem, jaComecou, eventoAtivo, limparEventos, colagem } from '../eventos.js';
 import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, CATEGORIAS, rotuloCategoria, haQuanto } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
@@ -13,7 +13,34 @@ export function telaInicio({ raiz, ativa }) {
   const conteudo = h('div', { class: 'inicio' }, esqueleto('grade', 6));
   montar(raiz, casca('inicio', conteudo));
   let timer = null;
-  const widgetEventos = h('section', { class: 'card lateral', hidden: true });
+  const bannerEvento = h('section', { class: 'aviso-evento', hidden: true, 'aria-label': 'Evento da galera' });
+  function carregarWidget() {
+    carregarEventos().then((d) => {
+      if (!ativa()) return;
+      const ativos = d.eventos.filter(eventoAtivo).sort((a, b) => a.inicio.localeCompare(b.inicio));
+      const e = ativos[0];
+      const vt = d.votacoes.filter((v) => !v.encerrada && !v.meu_voto).length;
+      if (!e && !vt) return;
+      bannerEvento.hidden = false;
+      const rolando = e && jaComecou(e);
+      const minha = e ? e.presencas[estado.membro.id] || '' : '';
+      montar(bannerEvento,
+        e ? h('div', { class: 'ae-capa' }, colagem(e)) : null,
+        h('div', { class: 'ae-texto' },
+          e ? h('span', { class: 'ae-rotulo' }, icone('calendario', 16), rolando ? 'Rolando agora' : 'Próximo evento') : null,
+          e ? h('h2', null, e.nome) : null,
+          e ? h('p', null, dataLonga(e.inicio) + (e.local ? ' · ' + e.local : '') + ' · ' + contagem(e.inicio)) : null,
+          ativos.length > 1 ? h('p', { class: 'suave pequeno' }, `+ ${ativos.length - 1} ${ativos.length === 2 ? 'outro evento' : 'outros eventos'} nesta semana`) : null,
+          vt ? h('p', { class: 'ae-voto' }, `🗳️ ${vt} ${vt === 1 ? 'votação aberta esperando' : 'votações abertas esperando'} o seu voto`) : null),
+        h('div', { class: 'ae-acoes' },
+          e && !rolando ? h('button', { type: 'button', class: minha === 'vou' ? 'btn-primario' : 'btn-contorno', 'aria-pressed': String(minha === 'vou'), onclick: async (ev) => {
+            ev.target.disabled = true;
+            try { await chamar('evento_presenca', { evento_id: e.id, resposta: minha === 'vou' ? '' : 'vou' }); limparEventos(); carregarWidget(); }
+            catch (err) { avisar(err.message, 'erro'); ev.target.disabled = false; }
+          } }, minha === 'vou' ? '✓ Eu vou' : 'Eu vou') : null,
+          h('a', { class: 'btn-sec', href: '#/eventos' }, vt && !e ? 'Votar' : 'Ver detalhes')));
+    }).catch(() => { /* a home funciona sem o aviso */ });
+  }
 
   carregarWidget();
   if (estado.catalogo) desenhar();
@@ -23,20 +50,6 @@ export function telaInicio({ raiz, ativa }) {
       h('button', { type: 'button', class: 'btn-sec', onclick: () => telaInicio({ raiz, ativa }) }, 'Tentar de novo'));
   });
 
-  function carregarWidget() {
-    carregarEventos().then((d) => {
-      if (!ativa()) return;
-      const prox = d.eventos.filter((e) => !e.cancelado && !jaComecou(e)).sort((a, b) => a.inicio.localeCompare(b.inicio))[0];
-      const vt = d.votacoes.filter((v) => !v.encerrada && !v.meu_voto).length;
-      if (!prox && !vt) return;
-      widgetEventos.hidden = false;
-      montar(widgetEventos,
-        h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('calendario', 20)), 'Eventos'), h('a', { href: '#/eventos' }, 'Ver todos →')),
-        prox ? h('a', { class: 'ev-mini', href: '#/eventos' }, h('strong', null, prox.nome), h('small', null, dataLonga(prox.inicio) + ' · ' + contagem(prox.inicio))) : null,
-        vt ? h('a', { class: 'ev-mini voto', href: '#/eventos' }, h('strong', null, `${vt} ${vt === 1 ? 'votação aberta' : 'votações abertas'}`), h('small', null, 'Seu voto ainda não foi dado')) : null);
-    }).catch(() => { /* a home funciona sem o widget */ });
-  }
-
   function desenhar() {
     clearInterval(timer);
     const { titulos, membros, status } = estado.catalogo;
@@ -44,8 +57,8 @@ export function telaInicio({ raiz, ativa }) {
     const quem = Object.fromEntries(membros.map((m) => [m.id, m]));
     const recentes = titulos.slice().sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     montar(conteudo,
-      h('div', { class: 'inicio-principal' }, hero(recentes.slice(0, 5), quem), ultimos(recentes), queridos(titulos)),
-      h('aside', { class: 'inicio-lateral' }, widgetEventos, assistindo(porId), minhaLista(porId), atividade(titulos, status, porId, quem))
+      h('div', { class: 'inicio-principal' }, bannerEvento, hero(recentes.slice(0, 5), quem), ultimos(recentes), queridos(titulos)),
+      h('aside', { class: 'inicio-lateral' }, assistindo(porId), minhaLista(porId), atividade(titulos, status, porId, quem))
     );
   }
 

@@ -780,3 +780,46 @@ label.check input { width: auto; margin: 0; accent-color: var(--ouro); }
 .form-evento { gap: 12px; }
 .col-adm .membro-adm { flex-wrap: wrap; }
 .col-adm .acoes { flex-wrap: wrap; flex-direction: row; }
+
+/* ---------- eventos v2: imagem, aviso na home, admin organizado ---------- */
+.evento { grid-template-columns: 260px 1fr; }
+.ev-colagem { height: 146px; }
+.ev-colagem.com-imagem { padding: 0; }
+.ev-colagem.com-imagem img { width: 100%; height: 100%; object-fit: cover; }
+.aviso-evento { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; padding: 16px 18px; border-radius: var(--raio); background: linear-gradient(120deg, #4a3340, #382932 60%); border: 1px solid var(--ouro); box-shadow: 0 8px 28px #0006; animation: entra .4s ease both; }
+.aviso-evento[hidden] { display: none; }
+.ae-capa { width: 180px; flex: none; }
+.ae-capa .ev-colagem { height: 100px; }
+.ae-capa .ev-colagem span { width: 44px; }
+.ae-texto { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.ae-texto h2 { font-size: 1.3rem; }
+.ae-rotulo { display: inline-flex; align-items: center; gap: 6px; color: var(--ouro); font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.ae-voto { color: var(--ouro); font-size: .92rem; }
+.ae-acoes { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.barra-adm { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.barra-adm button { display: inline-flex; align-items: center; gap: 8px; }
+.form-evento h2 { font-size: 1.1rem; }
+.painel-discreto.form-evento { max-width: 720px; margin-bottom: 24px; border-style: solid; background: var(--card); }
+.bloco-adm { margin-bottom: 28px; display: grid; gap: 12px; }
+.adm-lista { display: grid; gap: 12px; }
+.adm-evento { display: flex; align-items: center; gap: 16px; background: var(--card); border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; flex-wrap: wrap; }
+.adm-evento.cancelado { opacity: .6; }
+.adm-ev-capa { width: 150px; flex: none; }
+.adm-ev-capa .ev-colagem { height: 84px; }
+.adm-ev-capa .ev-colagem span { width: 38px; }
+.adm-ev-info { flex: 1; min-width: 180px; display: grid; gap: 2px; }
+.adm-evento .acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.adm-evento select { width: auto; padding: 6px 10px; font-size: .85rem; }
+.campo-imagem { display: grid; gap: 8px; }
+.campo-imagem-previa { aspect-ratio: 16 / 9; max-width: 360px; border-radius: 12px; background: var(--card2); border: 1px dashed var(--borda); display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px; overflow: hidden; }
+.campo-imagem-previa img { width: 100%; height: 100%; object-fit: cover; }
+.campo-imagem label.btn-sec { cursor: pointer; }
+@media (max-width: 800px) {
+  .evento { grid-template-columns: 1fr; }
+  .ev-colagem { height: 160px; }
+  .aviso-evento { flex-direction: column; align-items: stretch; }
+  .ae-capa { width: 100%; }
+  .ae-capa .ev-colagem { height: 130px; }
+  .ae-acoes { flex-direction: row; }
+  .adm-ev-capa { width: 100%; }
+}
