@@ -66,4 +66,16 @@ export function quemVai(e, membros, resposta, max = 8) {
   return { total: ms.length, pilha: h('span', { class: 'pilha-avatares' }, ms.slice(0, max).map((m) => avatar(m, { tamanho: 28, dica: m.nome }))) };
 }
 
+/** Programação do evento: filmes ordenados por horário (sem horário vão para o fim). */
+export function programacao(e) {
+  return e.titulos.map((id) => ({ titulo_id: id, inicio: (e.horarios || {})[id] || '' }))
+    .sort((a, b) => (a.inicio || '~').localeCompare(b.inicio || '~'));
+}
+
+/** "sex., 20:00" */
+export function horaCurta(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace('.', '');
+}
+
 export { chamar };

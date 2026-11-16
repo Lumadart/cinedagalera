@@ -19,7 +19,7 @@ export function telaInicio({ raiz, ativa }) {
       if (!ativa()) return;
       const ativos = d.eventos.filter(eventoAtivo).sort((a, b) => a.inicio.localeCompare(b.inicio));
       const e = ativos[0];
-      const vt = d.votacoes.filter((v) => !v.encerrada && !v.meu_voto).length;
+      const vt = d.votacoes.filter((v) => !v.encerrada && (v.meus_votos || []).length < v.max_votos).length;
       if (!e && !vt) return;
       bannerEvento.hidden = false;
       const rolando = e && jaComecou(e);
@@ -31,6 +31,7 @@ export function telaInicio({ raiz, ativa }) {
           e ? h('h2', null, e.nome) : null,
           e ? h('p', null, dataLonga(e.inicio) + (e.local ? ' · ' + e.local : '') + ' · ' + contagem(e.inicio)) : null,
           ativos.length > 1 ? h('p', { class: 'suave pequeno' }, `+ ${ativos.length - 1} ${ativos.length === 2 ? 'outro evento' : 'outros eventos'} nesta semana`) : null,
+          e && e.sugestoes_abertas ? h('p', { class: 'ae-voto' }, `💡 Sugira até ${e.sugestoes_max} ${e.sugestoes_max === 1 ? 'filme' : 'filmes'} (você usou ${e.sugestoes.filter((x) => x.membro_id === estado.membro.id).length})`) : null,
           vt ? h('p', { class: 'ae-voto' }, `🗳️ ${vt} ${vt === 1 ? 'votação aberta esperando' : 'votações abertas esperando'} o seu voto`) : null),
         h('div', { class: 'ae-acoes' },
           e && !rolando ? h('button', { type: 'button', class: minha === 'vou' ? 'btn-primario' : 'btn-contorno', 'aria-pressed': String(minha === 'vou'), onclick: async (ev) => {
@@ -38,7 +39,7 @@ export function telaInicio({ raiz, ativa }) {
             try { await chamar('evento_presenca', { evento_id: e.id, resposta: minha === 'vou' ? '' : 'vou' }); limparEventos(); carregarWidget(); }
             catch (err) { avisar(err.message, 'erro'); ev.target.disabled = false; }
           } }, minha === 'vou' ? '✓ Eu vou' : 'Eu vou') : null,
-          h('a', { class: 'btn-sec', href: '#/eventos' }, vt && !e ? 'Votar' : 'Ver detalhes')));
+          h('a', { class: 'btn-sec', href: '#/eventos' }, vt && !e ? 'Votar' : (e && e.sugestoes_abertas ? 'Sugerir filmes' : 'Ver detalhes'))));
     }).catch(() => { /* a home funciona sem o aviso */ });
   }
 

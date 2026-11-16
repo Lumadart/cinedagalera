@@ -823,3 +823,24 @@ label.check input { width: auto; margin: 0; accent-color: var(--ouro); }
   .ae-acoes { flex-direction: row; }
   .adm-ev-capa { width: 100%; }
 }
+
+/* ---------- sugestões, programação e desempate ---------- */
+.programa, .sugestoes-bloco { display: grid; gap: 8px; margin-top: 4px; }
+.programa h4, .sugestoes-bloco h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--suave); }
+.programa ol { display: grid; gap: 8px; }
+.prog-item { display: flex; align-items: center; gap: 12px; background: var(--card2); border: 1px solid var(--borda); border-radius: 12px; padding: 8px 12px; text-decoration: none; color: var(--texto); transition: border-color .2s; }
+.prog-item:hover { border-color: var(--ouro); }
+.prog-item .mini-capa { width: 34px; }
+.prog-nome { flex: 1; min-width: 0; display: grid; }
+.prog-nome small { font-size: .8rem; }
+.prog-hora { color: var(--ouro); font-weight: 800; white-space: nowrap; font-size: .9rem; }
+.prog-hora.a-definir { color: var(--suave); font-weight: 600; }
+.sugestoes-lista { display: grid; gap: 6px; }
+.sugestoes-lista li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sugestoes-bloco .seletor { max-width: 420px; }
+.prog-editor { display: grid; gap: 8px; margin-top: 8px; }
+.prog-linha { display: grid; grid-template-columns: 34px 1fr minmax(0, 220px); gap: 10px; align-items: center; }
+.prog-linha input { padding: 6px 10px; }
+.desempate { flex-basis: 100%; display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--ouro); border-radius: 12px; }
+.desempate[hidden] { display: none; }
+@media (max-width: 800px) { .prog-linha { grid-template-columns: 34px 1fr; } .prog-linha input { grid-column: 1 / -1; } .prog-item { flex-wrap: wrap; } }

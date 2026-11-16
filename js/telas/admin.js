@@ -47,7 +47,7 @@ export function telaAdmin({ raiz, ativa }) {
   const paraIso = (v) => (v ? new Date(v).toISOString() : '');
 
   /** Escolhe títulos do catálogo: busca + chips dos escolhidos. */
-  function seletorTitulos(inicial, max) {
+  function seletorTitulos(inicial, max, aoMudar = null) {
     const escolhidos = new Set(inicial);
     const campo = h('input', { type: 'search', placeholder: 'Buscar no catálogo para adicionar…', 'aria-label': 'Buscar título', autocomplete: 'off' });
     const sugestoes = h('ul', { class: 'sugestoes' });
@@ -55,12 +55,12 @@ export function telaAdmin({ raiz, ativa }) {
     const por = (id) => estado.catalogo.titulos.find((t) => t.id === id);
     const pintar = () => {
       montar(chips, [...escolhidos].map(por).filter(Boolean).map((t) => h('span', { class: 'chip-titulo' }, t.nome,
-        h('button', { type: 'button', 'aria-label': 'Tirar ' + t.nome, onclick: () => { escolhidos.delete(t.id); pintar(); } }, '×'))));
+        h('button', { type: 'button', 'aria-label': 'Tirar ' + t.nome, onclick: () => { escolhidos.delete(t.id); pintar(); if (aoMudar) aoMudar(); } }, '×'))));
       const q = normalizar(campo.value.trim());
       const achados = q ? estado.catalogo.titulos.filter((t) => !escolhidos.has(t.id) && normalizar(t.nome).includes(q)).slice(0, 5) : [];
       montar(sugestoes, achados.map((t) => h('li', null, h('button', { type: 'button', onclick: () => {
         if (escolhidos.size >= max) { avisar(`Máximo de ${max} títulos.`, 'erro'); return; }
-        escolhidos.add(t.id); campo.value = ''; pintar();
+        escolhidos.add(t.id); campo.value = ''; pintar(); if (aoMudar) aoMudar();
       } }, h('span', { class: 'mini-capa p' }, capa(t)), t.nome, h('small', { class: 'suave' }, ' ' + (t.ano || ''))))));
     };
     campo.addEventListener('input', pintar);
@@ -82,7 +82,32 @@ export function telaAdmin({ raiz, ativa }) {
 
     // --- evento (criar / editar) ---
     function formEvento(e) {
-      const sel = seletorTitulos(e ? e.titulos : [], 30);
+      const horarios = { ...(e ? e.horarios : {}) };
+      const progBox = h('div', { class: 'prog-editor' });
+      const sel = seletorTitulos(e ? e.titulos : [], 30, () => pintarProg());
+      const ordenados = () => sel.valor();
+      function pintarProg() {
+        const ids = ordenados();
+        Object.keys(horarios).forEach((id) => { if (!ids.includes(id)) delete horarios[id]; });
+        if (!ids.length) { montar(progBox, h('p', { class: 'suave pequeno' }, 'Adicione títulos acima para definir o dia e o horário de cada um.')); return; }
+        montar(progBox,
+          ids.map((id) => {
+            const t = estado.catalogo.titulos.find((x) => x.id === id); if (!t) return null;
+            const campoH = h('input', { type: 'datetime-local', value: horarios[id] ? paraLocal(horarios[id]) : '', 'aria-label': 'Horário de ' + t.nome,
+              onchange: (ev) => { if (ev.target.value) horarios[id] = paraIso(ev.target.value); else delete horarios[id]; } });
+            return h('div', { class: 'prog-linha' }, h('span', { class: 'mini-capa p' }, capa(t)), h('strong', null, t.nome), campoH);
+          }),
+          h('div', { class: 'acoes' }, h('button', { type: 'button', class: 'btn-sec', onclick: () => {
+            if (!campo.inicio.value) { avisar('Defina primeiro o início do evento.', 'erro'); return; }
+            let t0 = new Date(campo.inicio.value).getTime();
+            ids.forEach((id) => {
+              const t = estado.catalogo.titulos.find((x) => x.id === id);
+              horarios[id] = new Date(t0).toISOString();
+              t0 += ((t && t.tipo === 'filme' && t.duracao_min ? t.duracao_min : 120) + 20) * 60000; // duração + 20 min de intervalo
+            });
+            pintarProg();
+          } }, 'Distribuir em sequência a partir do início')));
+      }
       let imagem; // undefined = não mexer · texto = nova imagem · null = remover
       const previa = h('div', { class: 'campo-imagem-previa' });
       const pintarPrevia = () => {
@@ -106,16 +131,18 @@ export function telaAdmin({ raiz, ativa }) {
         fim: h('input', { type: 'datetime-local', value: e && e.fim ? paraLocal(e.fim) : '' }),
         local: h('input', { type: 'text', maxlength: 80, value: e ? e.local : '', placeholder: 'Ex.: Discord, casa da Ana…' }),
         descricao: h('textarea', { rows: 3, maxlength: 600 }, e ? e.descricao : ''),
-        avisar: h('input', { type: 'checkbox', checked: !e })
+        avisar: h('input', { type: 'checkbox', checked: !e }),
+        sugestoes_max: h('input', { type: 'number', min: 0, max: 10, step: 1, value: e ? e.sugestoes_max : 0 })
       };
       if (e) campo.tipo.value = e.tipo;
+      pintarProg();
       const msg = h('p', { class: 'erro', role: 'alert' });
       const form = h('form', { class: 'painel-discreto form-evento', onsubmit: async (ev) => {
         ev.preventDefault(); msg.textContent = '';
         const botao = form.querySelector('button[type=submit]'); botao.disabled = true;
         const corpo = {
           id: e ? e.id : undefined, nome: campo.nome.value, tipo: campo.tipo.value, tema: campo.tema.value, inicio: paraIso(campo.inicio.value), fim: paraIso(campo.fim.value),
-          local: campo.local.value, descricao: campo.descricao.value, titulos: sel.valor(), avisar: campo.avisar.checked
+          local: campo.local.value, descricao: campo.descricao.value, titulos: sel.valor(), horarios, sugestoes_max: Number(campo.sugestoes_max.value) || 0, avisar: campo.avisar.checked
         };
         if (imagem) corpo.imagem = imagem; else if (imagem === null) corpo.remover_imagem = true;
         try {
@@ -134,7 +161,16 @@ export function telaAdmin({ raiz, ativa }) {
           h('div', { class: 'acoes' },
             h('label', { class: 'btn-sec', for: 'ev-imagem' }, icone('editar', 16), 'Escolher imagem'),
             h('button', { type: 'button', class: 'btn-sec', onclick: () => { imagem = null; pintarPrevia(); } }, 'Remover'), arquivo)),
-        h('div', null, h('span', { class: 'rotulo' }, 'Títulos do evento'), sel.el),
+        h('label', null, 'Sugestões de filmes por pessoa (0 = a galera não sugere)', campo.sugestoes_max),
+        e && e.sugestoes.length ? h('div', null, h('span', { class: 'rotulo' }, `Sugestões da galera (${e.sugestoes.length})`),
+          h('div', { class: 'ev-titulos' }, e.sugestoes.map((x) => {
+            const t = estado.catalogo.titulos.find((y) => y.id === x.titulo_id), m = estado.catalogo.membros.find((y) => y.id === x.membro_id);
+            return h('span', { class: 'chip-titulo' }, (t ? t.nome : '?') + ' · ' + (m ? m.nome.split(' ')[0] : '?'),
+              h('button', { type: 'button', 'aria-label': 'Remover sugestão', onclick: async (ev) => {
+                try { await chamar('admin_sugestao_remover', { evento_id: e.id, membro_id: x.membro_id, titulo_id: x.titulo_id }); ev.target.closest('.chip-titulo').remove(); limparEventos(); }
+                catch (err) { avisar(err.message, 'erro'); } } }, '×'));
+          }))) : null,
+        h('div', null, h('span', { class: 'rotulo' }, 'Filmes que vão (programação)'), sel.el, progBox),
         h('label', { class: 'check' }, campo.avisar, ' Avisar no Discord'),
         msg,
         h('div', { class: 'acoes' }, h('button', { type: 'submit', class: 'btn-primario' }, e ? 'Salvar' : 'Criar evento'),
@@ -144,24 +180,41 @@ export function telaAdmin({ raiz, ativa }) {
 
     // --- votação ---
     function formVotacao() {
-      const sel = seletorTitulos([], 10);
-      const pergunta = h('input', { type: 'text', maxlength: 120, placeholder: 'Ex.: Qual filme abre a maratona?', required: true });
+      const sel = seletorTitulos([], 20);
+      const pergunta = h('input', { type: 'text', maxlength: 120, placeholder: 'Ex.: Quais filmes vão para a maratona?', required: true });
       const evento = h('select', null, h('option', { value: '' }, '(sem evento)'), d.eventos.filter((x) => !x.cancelado).map((x) => h('option', { value: x.id }, x.nome)));
       const prazo = h('input', { type: 'datetime-local' });
+      const maxVotos = h('input', { type: 'number', min: 1, max: 20, value: 1 });
+      const vagas = h('input', { type: 'number', min: 1, max: 20, value: 1 });
       const av = h('input', { type: 'checkbox', checked: true });
+      const usar = h('input', { type: 'checkbox' });
+      const infoSug = h('span', { class: 'suave pequeno' });
+      const caixaUsar = h('label', { class: 'check', hidden: true }, usar, infoSug);
+      const caixaOpcoes = h('div', null, h('span', { class: 'rotulo' }, 'Opções (de 2 a 20 títulos)'), sel.el);
+      const atualizar = () => {
+        const ev = d.eventos.find((x) => x.id === evento.value);
+        const n = ev ? new Set(ev.sugestoes.map((x) => x.titulo_id)).size : 0;
+        caixaUsar.hidden = !n;
+        infoSug.textContent = ` Votar nos ${n} filmes sugeridos pela galera para este evento (fecha as sugestões)`;
+        if (!n) usar.checked = false;
+        caixaOpcoes.hidden = usar.checked;
+      };
+      evento.addEventListener('change', atualizar); usar.addEventListener('change', atualizar);
       const msg = h('p', { class: 'erro', role: 'alert' });
       const form = h('form', { class: 'painel-discreto form-evento', onsubmit: async (ev) => {
         ev.preventDefault(); msg.textContent = '';
         const botao = form.querySelector('button[type=submit]'); botao.disabled = true;
         try {
-          await chamar('admin_votacao_criar', { pergunta: pergunta.value, opcoes: sel.valor(), evento_id: evento.value, encerra_em: paraIso(prazo.value), avisar: av.checked });
+          await chamar('admin_votacao_criar', { pergunta: pergunta.value, opcoes: usar.checked ? undefined : sel.valor(), das_sugestoes: usar.checked, evento_id: evento.value,
+            encerra_em: paraIso(prazo.value), max_votos: Number(maxVotos.value) || 1, vagas: Number(vagas.value) || 1, avisar: av.checked });
           avisar('Votação aberta.'); refazer();
         } catch (err) { msg.textContent = err.message; botao.disabled = false; }
       } },
         h('h2', null, 'Nova votação'),
         h('label', null, 'Pergunta', pergunta),
-        h('div', null, h('span', { class: 'rotulo' }, 'Opções (de 2 a 10 títulos)'), sel.el),
         h('div', { class: 'duas-colunas' }, h('label', null, 'Evento ligado (opcional)', evento), h('label', null, 'Prazo (opcional)', prazo)),
+        caixaUsar, caixaOpcoes,
+        h('div', { class: 'duas-colunas' }, h('label', null, 'Votos por pessoa', maxVotos), h('label', null, 'Quantos filmes entram (mais votados)', vagas)),
         h('label', { class: 'check' }, av, ' Avisar no Discord'),
         msg, h('div', { class: 'acoes' }, h('button', { type: 'submit', class: 'btn-primario' }, 'Abrir votação'), h('button', { type: 'button', class: 'btn-sec', onclick: () => refazer() }, 'Cancelar')));
       return form;
@@ -198,7 +251,7 @@ export function telaAdmin({ raiz, ativa }) {
       h('div', { class: 'adm-ev-info' },
         h('strong', null, e.nome, e.cancelado ? h('small', { class: 'suave' }, ' (cancelado)') : null),
         h('span', { class: 'suave pequeno' }, `${TIPOS_EVENTO[e.tipo]} · ${dataLonga(e.inicio)}`),
-        h('span', { class: 'suave pequeno' }, `${Object.values(e.presencas).filter((x) => x === 'vou').length} vão · ${e.titulos.length} ${e.titulos.length === 1 ? 'título' : 'títulos'}`)),
+        h('span', { class: 'suave pequeno' }, `${Object.values(e.presencas).filter((x) => x === 'vou').length} vão · ${e.titulos.length} ${e.titulos.length === 1 ? 'filme' : 'filmes'}` + (e.sugestoes.length ? ` · ${e.sugestoes.length} ${e.sugestoes.length === 1 ? 'sugestão' : 'sugestões'}` : ''))),
       h('div', { class: 'acoes' },
         h('button', { type: 'button', class: 'btn-sec', onclick: () => abrir('evento', e) }, 'Editar'),
         h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
@@ -209,18 +262,36 @@ export function telaAdmin({ raiz, ativa }) {
           try { await chamar('admin_evento_apagar', { id: e.id }); avisar('Evento apagado.'); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Apagar')));
 
     const cartaoVotacao = (v) => {
-      const sel = h('select', { class: 'sel-vencedor', 'aria-label': 'Vencedor (use em caso de empate)' }, h('option', { value: '' }, 'Vencedor pelo placar'), v.opcoes.map((id) => h('option', { value: id }, nomeDe(id))));
+      const painelDesempate = h('div', { class: 'desempate', hidden: true });
+      const encerrar = async (ids) => {
+        try {
+          const r = await chamar('admin_votacao_encerrar', { votacao_id: v.id, vencedores_ids: ids, adicionar_ao_evento: !!v.evento_id });
+          avisar('Votação encerrada.' + (r.no_evento ? ' Os vencedores entraram no evento.' : '')); refazer(false);
+        } catch (err) {
+          if (err.codigo !== 'empate') { avisar(err.message, 'erro'); return; }
+          const caixas = v.opcoes.map((id) => ({ id, el: h('input', { type: 'checkbox', checked: v.empate.length > 0 && !v.empate.includes(id) && ((v.placar || {})[id] || 0) > ((v.placar || {})[v.empate[0]] || 0) }) }));
+          painelDesempate.hidden = false;
+          montar(painelDesempate,
+            h('p', null, `Deu empate na última vaga. Marque até ${v.vagas} ${v.vagas === 1 ? 'filme' : 'filmes'} que entram:`),
+            caixas.map((c) => h('label', { class: 'check' }, c.el, ` ${nomeDe(c.id)} · ${(v.placar || {})[c.id] || 0} ${((v.placar || {})[c.id] || 0) === 1 ? 'voto' : 'votos'}`)),
+            h('div', { class: 'acoes' }, h('button', { type: 'button', class: 'btn-primario', onclick: () => {
+              const marcados = caixas.filter((c) => c.el.checked).map((c) => c.id);
+              if (!marcados.length) { avisar('Marque pelo menos um filme.', 'erro'); return; }
+              encerrar(marcados);
+            } }, 'Encerrar com estes')));
+        }
+      };
       return h('li', { class: 'adm-evento adm-voto' },
         h('div', { class: 'adm-ev-info' }, h('strong', null, v.pergunta),
-          h('span', { class: 'suave pequeno' }, `${v.encerrada ? 'Encerrada' : 'Aberta'} · ${v.total} ${v.total === 1 ? 'voto' : 'votos'}` + (v.vencedor ? ' · vencedor: ' + nomeDe(v.vencedor) : ''))),
+          h('span', { class: 'suave pequeno' }, `${v.encerrada ? 'Encerrada' : 'Aberta'} · ${v.total} ${v.total === 1 ? 'voto' : 'votos'} · ${v.max_votos} por pessoa · ${v.vagas} ${v.vagas === 1 ? 'vaga' : 'vagas'}` +
+            (v.vencedores.length ? ' · vencedores: ' + v.vencedores.map(nomeDe).join(', ') : '')),
+          !v.encerrada && v.placar ? h('span', { class: 'suave pequeno' }, 'Placar: ' + v.opcoes.map((id) => `${nomeDe(id)} (${v.placar[id] || 0})`).join(' · ')) : null),
         h('div', { class: 'acoes' },
-          !v.encerrada ? sel : null,
-          !v.encerrada ? h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
-            try { const r = await chamar('admin_votacao_encerrar', { votacao_id: v.id, vencedor_id: sel.value || undefined, adicionar_ao_evento: !!v.evento_id });
-              avisar('Votação encerrada.' + (r.no_evento ? ' O vencedor entrou no evento.' : '')); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Encerrar') : null,
+          !v.encerrada ? h('button', { type: 'button', class: 'btn-sec', onclick: () => encerrar(undefined) }, 'Encerrar') : null,
           h('button', { type: 'button', class: 'btn-sec perigo', onclick: async () => {
             if (!confirm(`Apagar a votação “${v.pergunta}” e todos os votos?`)) return;
-            try { await chamar('admin_votacao_apagar', { votacao_id: v.id }); avisar('Votação apagada.'); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Apagar')));
+            try { await chamar('admin_votacao_apagar', { votacao_id: v.id }); avisar('Votação apagada.'); refazer(false); } catch (err) { avisar(err.message, 'erro'); } } }, 'Apagar')),
+        painelDesempate);
     };
 
     const botaoGaveta = (g, rotulo, ico) => h('button', { type: 'button', class: (gaveta === g ? 'btn-primario' : 'btn-sec'), onclick: () => (gaveta === g ? refazer() : abrir(g)) }, icone(ico, 16), rotulo);
