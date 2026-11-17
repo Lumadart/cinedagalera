@@ -8,7 +8,21 @@ const TOTAL = 44, POSICAO_FINAL = 38;
 
 const reduzido = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
-const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
+
+/** Sequência de `n` itens passando por todos antes de repetir (embaralha a cada volta), para a mesma capa não aparecer perto dela mesma. */
+function sequencia(fonte, n) {
+  const saida = [];
+  let volta = [];
+  while (saida.length < n) {
+    if (!volta.length) {
+      volta = [...fonte];
+      for (let i = volta.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [volta[i], volta[j]] = [volta[j], volta[i]]; }
+      if (saida.length && volta.length > 1 && volta[volta.length - 1] === saida[saida.length - 1]) volta.reverse();
+    }
+    saida.push(volta.pop());
+  }
+  return saida;
+}
 
 function ladrilho(item) {
   const el = h('div', { class: 'rolo-item' }, item ? capa(item) : h('div', { class: 'capa sem-imagem' }, icone('dado', 28)));
@@ -25,8 +39,7 @@ export function criarRolo() {
   function ocioso(lista) {
     trilho.getAnimations().forEach((a) => a.cancel());
     trilho.style.transform = '';
-    const base = lista && lista.length ? [...lista].sort(() => Math.random() - 0.5).slice(0, 14) : Array.from({ length: 12 }, () => null);
-    while (base.length < 12) base.push(...base.slice(0, 12 - base.length));
+    const base = lista && lista.length ? sequencia(lista, Math.min(14, Math.max(12, lista.length))) : Array.from({ length: 12 }, () => null);
     trilho.replaceChildren(...base.map(ladrilho), ...base.map(ladrilho));   // duas voltas: o laço fica contínuo
     trilho.classList.add('ocioso');
   }
@@ -38,12 +51,9 @@ export function criarRolo() {
     trilho.getAnimations().forEach((a) => a.cancel());
     const outros = lista.filter((t) => t !== final && (t.id || t.tmdb_id) !== (final.id || final.tmdb_id));
     const fonte = outros.length ? outros : [final];
-    const itens = [];
-    for (let i = 0; i < TOTAL; i++) {
-      let t = i === POSICAO_FINAL ? final : sortear(fonte);
-      if (i !== POSICAO_FINAL && fonte.length > 1 && itens[i - 1] && itens[i - 1].__t === t) t = sortear(fonte);
-      const l = ladrilho(t); l.__t = t; itens.push(l);
-    }
+    const seq = sequencia(fonte, TOTAL);
+    seq[POSICAO_FINAL] = final;
+    const itens = seq.map(ladrilho);
     trilho.replaceChildren(...itens);
     const largura = janela.clientWidth || 600;
     const alvo = POSICAO_FINAL * PASSO + LARGURA / 2 - largura / 2 + (Math.random() * 60 - 30);
