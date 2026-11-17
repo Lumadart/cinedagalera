@@ -13,6 +13,7 @@ import { telaEditarPerfil } from './telas/editar-perfil.js';
 import { telaAmigos } from './telas/amigos.js';
 import { telaAdmin } from './telas/admin.js';
 import { telaEventos } from './telas/eventos.js';
+import { telaSorteio } from './telas/sorteio.js';
 
 const raiz = document.getElementById('app');
 let versao = 0; // cada troca de tela invalida respostas atrasadas da tela anterior
@@ -27,13 +28,14 @@ function rotaAtual() {
   if (partes[0] === 'catalogo') return { nome: 'catalogo' };
   if (partes[0] === 'adicionar') return { nome: 'adicionar' };
   if (partes[0] === 'eventos') return { nome: 'eventos' };
+  if (partes[0] === 'sorteio') return { nome: 'sorteio' };
   if (partes[0] === 'admin') return { nome: 'admin' };
   if (partes[0] === 'titulo' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'titulo', id: partes[1] };
   return { nome: 'inicio' };
 }
 
-const TELAS = { perfil: telaPerfil, editar: telaEditarPerfil, amigos: telaAmigos, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo, adicionar: telaAdicionar, admin: telaAdmin, eventos: telaEventos };
-const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos' };
+const TELAS = { perfil: telaPerfil, editar: telaEditarPerfil, amigos: telaAmigos, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo, adicionar: telaAdicionar, admin: telaAdmin, eventos: telaEventos, sorteio: telaSorteio };
+const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', sorteio: 'Sorteio' };
 
 function rotear() {
   const rota = rotaAtual();

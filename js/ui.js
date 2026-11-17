@@ -164,6 +164,7 @@ export function casca(rota, conteudo, { aoBuscar = null } = {}) {
         item('perfil', '#/perfil', 'Meu perfil', 'marcador'),
         item('amigos', '#/amigos', 'Amigos', 'amigos'),
         item('eventos', '#/eventos', 'Eventos', 'calendario'),
+        item('sorteio', '#/sorteio', 'Sorteio', 'dado'),
         m && m.admin ? item('admin', '#/admin', 'Administração', 'escudo') : null
       ),
       menuImagem()
