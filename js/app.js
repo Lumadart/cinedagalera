@@ -56,6 +56,19 @@ function sessaoExpirou() {
   else rotear();
 }
 
+const MOMENTO_INICIAL = performance.now();
+
+/** Some com a tela de carregamento (depois de um tempo mínimo, para não piscar). */
+function esconderSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  const espera = Math.max(0, 1100 - (performance.now() - MOMENTO_INICIAL));
+  setTimeout(() => {
+    splash.classList.add('saindo');
+    setTimeout(() => splash.remove(), 700);
+  }, espera);
+}
+
 async function iniciar() {
   if (lerToken()) {
     try {
@@ -66,6 +79,7 @@ async function iniciar() {
         montar(raiz, h('div', { class: 'estado-vazio tela-cheia' },
           h('p', { class: 'erro' }, e.message),
           h('button', { type: 'button', class: 'btn-primario', onclick: () => location.reload() }, 'Tentar de novo')));
+        esconderSplash();
         return;
       }
     }
@@ -73,6 +87,7 @@ async function iniciar() {
   window.addEventListener('hashchange', rotear);
   window.addEventListener('sessao-expirada', sessaoExpirou);
   rotear();
+  esconderSplash();
 }
 
 iniciar();

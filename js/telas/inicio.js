@@ -2,8 +2,9 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, aplicarStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
 import { cartaoTitulo } from '../cartao.js';
-import { carregarEventos, dataLonga, contagem, jaComecou, eventoAtivo, limparEventos, colagem } from '../eventos.js';
-import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, CATEGORIAS, rotuloCategoria, haQuanto } from '../ui.js';
+import { carregarEventos, eventoAtivo, limparEventos, colagem } from '../eventos.js';
+import { dataLonga, contagem, jaComecou, haQuanto } from '../datas.js';
+import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, rotuloCategoria } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };

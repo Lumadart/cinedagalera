@@ -1,7 +1,7 @@
 import { h, montar } from '../dom.js';
 import { estado } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, capa, avisar, detalheTitulo, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
+import { casca, capa, avisar, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 
 export function telaAdicionar({ raiz, ativa }) {
   const campo = h('input', {

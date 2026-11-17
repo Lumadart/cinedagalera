@@ -8,16 +8,14 @@ import { NOME_DO_GRUPO } from './config.js';
 export const ROTULOS = { quero_ver: 'Quero ver', assistindo: 'Assistindo', visto: 'Visto', abandonado: 'Abandonado' };
 export const COR_STATUS = { quero_ver: 'var(--quer)', assistindo: 'var(--assistindo)', visto: 'var(--ouro)', abandonado: 'var(--abandonou)' };
 export const ORDEM_STATUS = { visto: 0, assistindo: 1, quero_ver: 2, abandonado: 3 };
-export const ICONE_STATUS = { quero_ver: 'marcador', assistindo: 'play', visto: 'check', abandonado: 'fechar' };
 
-export const BANNERS = {
+const BANNERS = {
   ameixa: 'linear-gradient(120deg, #6a3a63, #2a1a2a)',
   ouro: 'linear-gradient(120deg, #c4821c, #4a2b47)',
   noite: 'linear-gradient(120deg, #1b101b, #5a4163)',
   aurora: 'linear-gradient(120deg, #3d2840, #2f6a63)',
   vinho: 'linear-gradient(120deg, #8a2b47, #2a1520)'
 };
-export const CORES_AVATAR = ['#F5B942', '#EE8E62', '#A3BCA6', '#C9A0DC', '#E37B9B', '#7FB7D6', '#F8EAD8', '#D96B5F'];
 
 /** O banner de um perfil: foto enviada, ou um degradê escolhido, ou o padrão. */
 export function banner(membro) {
@@ -49,17 +47,13 @@ export function seguro(url) {
   return typeof url === 'string' && /^https:\/\//.test(url) ? url : '';
 }
 
-export function iniciais(nome) {
+function iniciais(nome) {
   const p = String(nome || '?').trim().split(/\s+/);
   return ((p[0][0] || '?') + (p[1] ? p[1][0] : '')).toUpperCase();
 }
 
 export function formatarNota(n) {
   return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
-export function tituloMeta(t) {
-  return rotuloCategoria(t) + (t.ano ? ' · ' + t.ano : '');
 }
 
 /** Bolinha do membro: foto, ou iniciais sobre a cor escolhida. `cor` desenha o anel de status. */
@@ -126,16 +120,6 @@ export function marcaLogo() {
   return svg;
 }
 
-/** Tempo relativo curto: "há 5 min", "há 3 h", "há 2 d". */
-export function haQuanto(iso) {
-  const t = new Date(iso).getTime();
-  if (!t) return '';
-  const min = Math.max(0, Math.round((Date.now() - t) / 60000));
-  if (min < 1) return 'agora';
-  if (min < 60) return `há ${min} min`;
-  if (min < 1440) return `há ${Math.round(min / 60)} h`;
-  return `há ${Math.round(min / 1440)} d`;
-}
 
 /** Busca do topo: no catálogo filtra na hora; nas outras telas, Enter leva ao catálogo já filtrado. */
 function buscaTopo(aoBuscar) {

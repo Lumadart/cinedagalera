@@ -3,7 +3,8 @@ import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
 import { painelBadges } from '../badges.js';
 import { cartaoTitulo } from '../cartao.js';
-import { casca, esqueleto, avatar, banner, capa, COR_STATUS, formatarNota, haQuanto } from '../ui.js';
+import { casca, esqueleto, avatar, banner, capa } from '../ui.js';
+import { haQuanto } from '../datas.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const ABAS = [['lista', 'Minha lista'], ['vistos', 'Vistos'], ['indicacoes', 'Indicações'], ['conquistas', 'Conquistas']];

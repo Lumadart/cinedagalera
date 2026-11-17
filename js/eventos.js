@@ -16,28 +16,6 @@ export function carregarEventos({ forcar = false } = {}) {
 }
 export function limparEventos() { cache = null; quando = 0; }
 
-export function dataLonga(iso) {
-  const d = new Date(iso);
-  if (isNaN(d)) return '';
-  return d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
-}
-
-/** "em 3 dias", "amanhã", "hoje às 20:00", "já começou". */
-export function contagem(iso) {
-  const t = new Date(iso).getTime();
-  if (!t) return '';
-  const ms = t - Date.now();
-  if (ms <= 0) return 'já começou';
-  const min = Math.round(ms / 60000);
-  if (min < 60) return `começa em ${min} min`;
-  const hh = Math.round(min / 60);
-  if (hh < 24) return `começa em ${hh} h`;
-  const dias = Math.round(hh / 24);
-  return dias === 1 ? 'começa amanhã' : `começa em ${dias} dias`;
-}
-
-export const jaComecou = (e) => new Date(e.inicio).getTime() <= Date.now();
-
 /** "Ativo" = rolando agora ou começando nos próximos 7 dias (sem cancelados). */
 export function eventoAtivo(e) {
   if (e.cancelado) return false;
@@ -71,11 +49,3 @@ export function programacao(e) {
   return e.titulos.map((id) => ({ titulo_id: id, inicio: (e.horarios || {})[id] || '' }))
     .sort((a, b) => (a.inicio || '~').localeCompare(b.inicio || '~'));
 }
-
-/** "sex., 20:00" */
-export function horaCurta(iso) {
-  const d = new Date(iso);
-  return isNaN(d) ? '' : d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace('.', '');
-}
-
-export { chamar };

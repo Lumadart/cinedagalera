@@ -1,8 +1,10 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, achaTitulo } from '../estado.js';
-import { casca, esqueleto, avisar, capa, haQuanto, avatar, normalizar } from '../ui.js';
-import { cartaoTitulo } from '../cartao.js';
-import { carregarEventos, limparEventos, chamar, dataLonga, contagem, jaComecou, colagem, quemVai, programacao, horaCurta, TIPOS_EVENTO } from '../eventos.js';
+import { casca, esqueleto, avisar, capa, avatar } from '../ui.js';
+import { haQuanto, dataLonga, contagem, jaComecou, horaCurta } from '../datas.js';
+import { buscaTitulos } from '../seletor.js';
+import { chamar } from '../api.js';
+import { carregarEventos, limparEventos, colagem, quemVai, programacao, TIPOS_EVENTO } from '../eventos.js';
 
 export function telaEventos({ raiz, ativa }) {
   const area = h('div', { class: 'eventos' }, esqueleto('lista', 3));
@@ -97,20 +99,17 @@ export function telaEventos({ raiz, ativa }) {
         aberta && sou ? h('button', { type: 'button', class: 'link-discreto', 'aria-label': 'Remover minha sugestão ' + t.nome, onclick: async () => {
           try { await chamar('evento_sugestao_remover', { evento_id: e.id, titulo_id: id }); await refazer(); } catch (err) { avisar(err.message, 'erro'); } } }, 'remover') : null);
     }));
-    const campo = h('input', { type: 'search', placeholder: 'Buscar no catálogo para sugerir…', autocomplete: 'off', 'aria-label': 'Sugerir filme' });
-    const achados = h('ul', { class: 'sugestoes' });
-    campo.addEventListener('input', () => {
-      const q = normalizar(campo.value.trim());
-      const lista2 = q ? estado.catalogo.titulos.filter((t) => !minhas.some((x) => x.titulo_id === t.id) && normalizar(t.nome).includes(q)).slice(0, 5) : [];
-      montar(achados, lista2.map((t) => h('li', null, h('button', { type: 'button', onclick: async () => {
+    const busca = buscaTitulos({
+      placeholder: 'Buscar no catálogo para sugerir…', excluir: () => minhas.map((x) => x.titulo_id),
+      aoEscolher: async (t) => {
         msg.textContent = '';
         try { await chamar('evento_sugerir', { evento_id: e.id, titulo_id: t.id }); avisar(`“${t.nome}” sugerido!`); await refazer(); }
         catch (err) { msg.textContent = err.message; }
-      } }, h('span', { class: 'mini-capa p' }, capa(t)), t.nome, h('small', { class: 'suave' }, ' ' + (t.ano || ''))))));
+      }
     });
     return h('div', { class: 'sugestoes-bloco' },
       h('h4', null, 'Sugestões da galera', aberta ? h('small', { class: 'suave' }, ` · você usou ${minhas.length} de ${e.sugestoes_max}`) : h('small', { class: 'suave' }, ' · encerradas')),
-      aberta && minhas.length < e.sugestoes_max ? h('div', { class: 'seletor' }, campo, achados) : null,
+      aberta && minhas.length < e.sugestoes_max ? busca.el : null,
       aberta && minhas.length >= e.sugestoes_max ? h('p', { class: 'suave pequeno' }, 'Você já usou todas as suas sugestões. Remova uma para trocar.') : null,
       msg,
       ids.length ? lista : h('p', { class: 'suave pequeno' }, 'Ninguém sugeriu ainda. Seja o primeiro!'));

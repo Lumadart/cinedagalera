@@ -36,7 +36,7 @@ function progresso(b) {
     h('small', null, `${b.valor} / ${proxima} ${b.unidade}`));
 }
 
-export function cartaoBadge(b) {
+function cartaoBadge(b) {
   return h('article', { class: 'badge-card' + (b.nivel ? ' tem' : '') + (b.disponivel ? '' : ' em-breve') },
     medalha(b),
     h('div', { class: 'badge-texto' },

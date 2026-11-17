@@ -1,9 +1,7 @@
-import { h, montar, icone } from '../dom.js';
+import { h, montar } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { cartaoTitulo, fecharMenus } from '../cartao.js';
-import {
-  casca, esqueleto, avatar, capa, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, ICONE_STATUS, normalizar, tituloMeta, CATEGORIAS, rotuloCategoria
-} from '../ui.js';
+import { casca, esqueleto, avisar, ROTULOS, COR_STATUS, normalizar, CATEGORIAS } from '../ui.js';
 
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
