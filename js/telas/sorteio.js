@@ -4,9 +4,10 @@ import { chamar } from '../api.js';
 import { casca, esqueleto, capa, avisar, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 
 // O que a pessoa escolheu nos filtros fica guardado enquanto o site estiver aberto.
-const escolha = { aba: 'catalogo', categoria: 'todos', genero: '', quem: 'qualquer', tipoNovo: 'filme', generoNovo: '' };
+const escolha = { aba: 'catalogo', categoria: 'todos', genero: '', quem: 'qualquer', categoriaNovo: 'filme', generoNovo: '' };
 let ultimoId = null;
 
+const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
 const reduzido = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
 
@@ -161,12 +162,20 @@ export function telaSorteio({ raiz, ativa }) {
       h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Tipo' },
         h('span', { class: 'filtro-rotulo' }, 'Tipo'),
         h('div', { class: 'filtros' },
-          chip('Filmes', escolha.tipoNovo === 'filme', () => { escolha.tipoNovo = 'filme'; escolha.generoNovo = ''; fila = []; generosTmdb = []; abaNovos(); }),
-          chip('Séries', escolha.tipoNovo === 'serie', () => { escolha.tipoNovo = 'serie'; escolha.generoNovo = ''; fila = []; generosTmdb = []; abaNovos(); }))),
+          Object.keys(CATEGORIAS).map((c) => chip(PLURAL[c], escolha.categoriaNovo === c, () => {
+            escolha.categoriaNovo = c; escolha.generoNovo = ''; fila = []; generosTmdb = []; gostos = []; abaNovos();
+          })))),
       blocoGenero,
       aviso,
       h('div', { class: 'sorteio-centro' }, palco, botao),
       saida);
+    if (!generosTmdb.length) {
+      const cat = escolha.categoriaNovo;
+      chamar('sortear_tmdb', { categoria: cat, so_generos: true }).then((d) => {
+        if (!ativa() || escolha.categoriaNovo !== cat || generosTmdb.length) return;
+        generosTmdb = d.generos_disponiveis; preencherGeneros();
+      }).catch(() => {});   // sem a lista o sorteio continua funcionando
+    }
     if (gostos.length) mostrarGostos(aviso);
     else aviso.textContent = 'Vamos olhar o que a galera mais gosta e buscar títulos novos no TMDB que ainda não estão no catálogo.';
 
@@ -175,7 +184,7 @@ export function telaSorteio({ raiz, ativa }) {
       try {
         if (!fila.length) {
           montar(saida, h('p', { class: 'suave', role: 'status' }, 'Procurando no TMDB…'));
-          const d = await chamar('sortear_tmdb', { tipo: escolha.tipoNovo, genero: escolha.generoNovo });
+          const d = await chamar('sortear_tmdb', { categoria: escolha.categoriaNovo, genero: escolha.generoNovo });
           if (!ativa()) return;
           const primeira = !generosTmdb.length;
           fila = d.resultados; gostos = d.gostos; personalizado = d.personalizado; generosTmdb = d.generos_disponiveis;
