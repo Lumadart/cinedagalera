@@ -1,12 +1,15 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
-import { criarRolo, confete } from '../rolo.js';
+import { criarRolo, criarCarta, confete } from '../rolo.js';
 import { casca, esqueleto, capa, avisar, seguro, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 
 // O que a pessoa escolheu nos filtros fica guardado enquanto o site estiver aberto.
 const escolha = { aba: 'catalogo', categoria: 'todos', genero: '', quem: 'qualquer', categoriaNovo: 'filme', generoNovo: '' };
 let ultimoId = null;
+
+function lerEstilo() { try { return localStorage.getItem('sorteio_estilo') === 'rolo' ? 'rolo' : 'surpresa'; } catch { return 'surpresa'; } }
+escolha.estilo = lerEstilo();
 
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
 const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
@@ -38,7 +41,7 @@ function cartaoResultado(t, acoes) {
 
 /** A área do resultado: roleta em cima; depois do sorteio ela some e entram a capa e os dados. */
 function criarCena(textoVazio) {
-  const rolo = criarRolo();
+  const rolo = escolha.estilo === 'rolo' ? criarRolo() : criarCarta();
   const palco = h('div', { class: 'palco' });
   const saida = h('div', { class: 'sorteio-saida' }, vazio(textoVazio));
   const cena = h('div', { class: 'sorteio-cena' }, rolo.el, h('div', { class: 'sorteio-resultado' }, palco, saida));
@@ -55,6 +58,19 @@ function criarCena(textoVazio) {
       confete(cena);
     }
   };
+}
+
+/** Escolha entre "só o sorteado" (carta misteriosa) e a roleta que passa outras capas. */
+function seletorEstilo(aoMudar) {
+  const op = (id, texto, dica) => h('button', {
+    type: 'button', class: 'chip' + (escolha.estilo === id ? ' ligado' : ''), 'aria-pressed': escolha.estilo === id ? 'true' : 'false', title: dica,
+    onclick: () => { escolha.estilo = id; try { localStorage.setItem('sorteio_estilo', id); } catch { /* sem armazenamento: vale só nesta visita */ } aoMudar(); }
+  }, texto);
+  return h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Estilo do sorteio' },
+    h('span', { class: 'filtro-rotulo' }, 'Estilo'),
+    h('div', { class: 'filtros' },
+      op('surpresa', 'Surpresa', 'Só aparece o título sorteado'),
+      op('rolo', 'Roleta', 'As capas passam correndo até parar numa')));
 }
 
 export function telaSorteio({ raiz, ativa }) {
@@ -130,7 +146,7 @@ export function telaSorteio({ raiz, ativa }) {
       h('div', { class: 'sorteio-selects' },
         h('label', null, h('span', { class: 'rotulo' }, 'Gênero'), selGenero),
         h('label', null, h('span', { class: 'rotulo' }, 'Para quem'), selQuem)),
-      contagem, botao),
+      seletorEstilo(abaCatalogo), contagem, botao),
       cena));
 
     async function rodar() {
@@ -178,7 +194,7 @@ export function telaSorteio({ raiz, ativa }) {
             escolha.categoriaNovo = c; escolha.generoNovo = ''; fila = []; generosTmdb = []; gostos = []; abaNovos();
           })))),
       blocoGenero,
-      aviso, botao),
+      seletorEstilo(abaNovos), aviso, botao),
       cena));
     if (!generosTmdb.length) {
       const cat = escolha.categoriaNovo;

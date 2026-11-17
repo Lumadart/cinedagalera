@@ -86,3 +86,47 @@ export function confete(area) {
   area.append(caixa);
   setTimeout(() => caixa.remove(), 2600);
 }
+
+/**
+ * Carta misteriosa: mostra só uma carta virada que treme, brilha e vira revelando o sorteado.
+ * Mesma interface da roleta (el, ocioso, girar), mas sem mostrar outros títulos.
+ */
+export function criarCarta() {
+  const capaEl = h('div', { class: 'carta-face carta-capa' });
+  const giro = h('div', { class: 'carta-giro' },
+    h('div', { class: 'carta-face carta-verso' }, h('span', { class: 'carta-interrogacao' }, '?'), h('span', { class: 'carta-nome' }, 'Cine Arkham')),
+    capaEl);
+  const carta = h('div', { class: 'carta ocioso' }, giro);
+  const clarao = h('span', { class: 'carta-clarao' });
+  const el = h('div', { class: 'rolo rolo-carta', 'aria-hidden': 'true' }, clarao, carta);
+
+  function ocioso() {
+    giro.getAnimations().forEach((a) => a.cancel());
+    carta.classList.remove('tremendo', 'venceu');
+    carta.classList.add('ocioso');
+    clarao.classList.remove('estourou');
+  }
+
+  async function girar(lista, final) {
+    if (reduzido()) return;
+    giro.getAnimations().forEach((a) => a.cancel());
+    clarao.classList.remove('estourou');
+    carta.classList.remove('ocioso', 'venceu');
+    const foto = capa(final);
+    foto.querySelector('img')?.setAttribute('loading', 'eager');
+    capaEl.replaceChildren(foto);
+    void carta.offsetWidth;                       // reinicia a animação de tremer
+    carta.classList.add('tremendo');
+    await espera(1250);
+    carta.classList.remove('tremendo');
+    clarao.classList.add('estourou');
+    const virar = giro.animate(
+      [{ transform: 'rotateY(0deg) scale(1)' }, { transform: 'rotateY(90deg) scale(1.12)' }, { transform: 'rotateY(180deg) scale(1.1)' }],
+      { duration: 1000, easing: 'cubic-bezier(.3,.6,.2,1)', fill: 'forwards' });
+    await virar.finished.catch(() => {});
+    carta.classList.add('venceu');
+    await espera(900);
+  }
+
+  return { el, ocioso, girar };
+}

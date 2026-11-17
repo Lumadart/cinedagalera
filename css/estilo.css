@@ -854,3 +854,25 @@ label.check input { width: auto; margin: 0; accent-color: var(--ouro); }
 @keyframes pisca { from { opacity: .55; } }
 @keyframes sorteado-entra { from { opacity: 0; transform: translateY(14px) scale(.98); } }
 @media (prefers-reduced-motion: reduce) { .rolo-trilho.ocioso, .sorteado.entrou, .tem-resultado .palco, .sorteio-sorteando { animation: none; } .rolo { display: none; } }
+
+/* carta misteriosa */
+.rolo-carta { height: 290px; max-height: 290px; display: grid; place-items: center; perspective: 1100px; }
+.carta { position: relative; width: 160px; height: 240px; filter: drop-shadow(0 0 22px #F5B94244); transition: filter .6s; }
+.carta.ocioso { animation: carta-flutua 3.4s ease-in-out infinite; }
+.carta.tremendo { animation: carta-treme 1.25s ease-in both; filter: drop-shadow(0 0 34px #F5B942aa); }
+.carta.venceu { filter: drop-shadow(0 0 46px #F5B942dd); }
+.carta-giro { position: absolute; inset: 0; transform-style: preserve-3d; }
+.carta-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 14px; overflow: hidden; }
+.carta-verso { display: grid; place-items: center; align-content: center; gap: 10px; border: 2px solid var(--ouro);
+  background: repeating-linear-gradient(45deg, #ffffff0a 0 8px, transparent 8px 16px), radial-gradient(ellipse at 50% 35%, #5b4153, #2e232a 75%); }
+.carta-verso::before { content: ''; position: absolute; inset: 9px; border: 1px dashed #F5B94277; border-radius: 9px; }
+.carta-interrogacao { font-size: 5.2rem; font-weight: 800; line-height: 1; color: var(--ouro); text-shadow: 0 0 24px #F5B942aa; }
+.carta-nome { font-size: .7rem; letter-spacing: .32em; text-indent: .32em; text-transform: uppercase; color: var(--suave); }
+.carta-capa { transform: rotateY(180deg); background: var(--card2); border: 2px solid var(--ouro); }
+.carta-capa .capa { height: 100%; aspect-ratio: auto; border-radius: 0; }
+.carta-clarao { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: radial-gradient(circle, #FFE9B0, #F5B94266 55%, transparent 70%); opacity: 0; pointer-events: none; }
+.carta-clarao.estourou { animation: clarao .9s ease-out both; }
+@keyframes carta-flutua { 50% { transform: translateY(-10px) rotate(1.2deg); } }
+@keyframes carta-treme { 0% { transform: none; } 15% { transform: translate(-2px, 0) rotate(-1deg); } 30% { transform: translate(3px, -2px) rotate(1.5deg); } 45% { transform: translate(-4px, 1px) rotate(-2.5deg); } 60% { transform: translate(5px, -2px) rotate(3deg); } 75% { transform: translate(-6px, 2px) rotate(-4deg) scale(1.04); } 100% { transform: translate(6px, -3px) rotate(4deg) scale(1.08); } }
+@keyframes clarao { from { opacity: 1; transform: scale(.5); } to { opacity: 0; transform: scale(7); } }
+@media (prefers-reduced-motion: reduce) { .carta.ocioso, .carta.tremendo, .carta-clarao.estourou { animation: none; } }
