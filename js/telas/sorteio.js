@@ -31,7 +31,6 @@ function girar(palco, lista, final) {
 
 function cartaoResultado(t, acoes) {
   return h('article', { class: 'sorteado' },
-    h('div', { class: 'sorteado-capa' }, capa(t)),
     h('div', { class: 'sorteado-info' },
       h('div', { class: 'linha-pills' },
         h('span', { class: 'pill-tipo fixo' }, rotuloCategoria(t)),
@@ -106,7 +105,8 @@ export function telaSorteio({ raiz, ativa }) {
     contagem.textContent = n ? `${n} ${n === 1 ? 'título possível' : 'títulos possíveis'} com esses filtros.` : 'Nenhum título com esses filtros.';
     botao.disabled = n === 0;
 
-    montar(painel,
+    montar(painel, h('div', { class: 'sorteio-grade' },
+      h('div', { class: 'sorteio-controles' },
       h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Tipo' },
         h('span', { class: 'filtro-rotulo' }, 'Tipo'),
         h('div', { class: 'filtros' },
@@ -115,9 +115,8 @@ export function telaSorteio({ raiz, ativa }) {
       h('div', { class: 'sorteio-selects' },
         h('label', null, h('span', { class: 'rotulo' }, 'Gênero'), selGenero),
         h('label', null, h('span', { class: 'rotulo' }, 'Para quem'), selQuem)),
-      contagem,
-      h('div', { class: 'sorteio-centro' }, palco, botao),
-      saida);
+      contagem, botao),
+      h('div', { class: 'sorteio-cena' }, palco, saida)));
 
     async function rodar() {
       const lista = opcoes();
@@ -158,7 +157,8 @@ export function telaSorteio({ raiz, ativa }) {
     };
     preencherGeneros();
 
-    montar(painel,
+    montar(painel, h('div', { class: 'sorteio-grade' },
+      h('div', { class: 'sorteio-controles' },
       h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Tipo' },
         h('span', { class: 'filtro-rotulo' }, 'Tipo'),
         h('div', { class: 'filtros' },
@@ -166,9 +166,8 @@ export function telaSorteio({ raiz, ativa }) {
             escolha.categoriaNovo = c; escolha.generoNovo = ''; fila = []; generosTmdb = []; gostos = []; abaNovos();
           })))),
       blocoGenero,
-      aviso,
-      h('div', { class: 'sorteio-centro' }, palco, botao),
-      saida);
+      aviso, botao),
+      h('div', { class: 'sorteio-cena' }, palco, saida)));
     if (!generosTmdb.length) {
       const cat = escolha.categoriaNovo;
       chamar('sortear_tmdb', { categoria: cat, so_generos: true }).then((d) => {
