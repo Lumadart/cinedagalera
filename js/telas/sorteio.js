@@ -1,7 +1,7 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, esqueleto, capa, avisar, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
+import { casca, esqueleto, capa, avisar, seguro, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 
 // O que a pessoa escolheu nos filtros fica guardado enquanto o site estiver aberto.
 const escolha = { aba: 'catalogo', categoria: 'todos', genero: '', quem: 'qualquer', categoriaNovo: 'filme', generoNovo: '' };
@@ -27,6 +27,18 @@ function girar(palco, lista, final) {
     };
     tique();
   });
+}
+
+/** Texto de espera, antes do primeiro sorteio. */
+function vazio(texto) {
+  return h('div', { class: 'sorteio-vazio' }, icone('dado', 40), h('h2', null, 'Pronto para sortear?'), h('p', null, texto));
+}
+
+/** Põe a capa sorteada (desfocada) no fundo da área do resultado. */
+function fundoDaCena(cena, t) {
+  const url = seguro(t.capa_url);
+  if (url) cena.style.setProperty('--cena-bg', `url("${url}")`); else cena.style.removeProperty('--cena-bg');
+  cena.classList.toggle('com-fundo', !!url);
 }
 
 function cartaoResultado(t, acoes) {
@@ -85,7 +97,8 @@ export function telaSorteio({ raiz, ativa }) {
     if (escolha.genero && !generos.includes(escolha.genero)) escolha.genero = '';
 
     const palco = h('div', { class: 'palco' }, h('div', { class: 'capa sem-imagem' }, '?'));
-    const saida = h('div', { class: 'sorteio-saida' });
+    const saida = h('div', { class: 'sorteio-saida' }, vazio('Escolha os filtros ao lado e aperte “Sortear!” — a roleta decide o que a galera vai ver.'));
+    const cena = h('div', { class: 'sorteio-cena' });
     const contagem = h('p', { class: 'suave pequeno', role: 'status' });
     const botao = h('button', { type: 'button', class: 'btn-primario grande', onclick: rodar }, icone('dado', 20), 'Sortear!');
 
@@ -116,7 +129,7 @@ export function telaSorteio({ raiz, ativa }) {
         h('label', null, h('span', { class: 'rotulo' }, 'Gênero'), selGenero),
         h('label', null, h('span', { class: 'rotulo' }, 'Para quem'), selQuem)),
       contagem, botao),
-      h('div', { class: 'sorteio-cena' }, palco, saida)));
+      (montar(cena, palco, saida), cena)));
 
     async function rodar() {
       const lista = opcoes();
@@ -127,7 +140,7 @@ export function telaSorteio({ raiz, ativa }) {
       botao.disabled = true; montar(saida);
       await girar(palco, lista, t);
       if (!ativa()) return;
-      montar(palco, capa(t));
+      montar(palco, capa(t)); fundoDaCena(cena, t);
       botao.disabled = false;
       botao.replaceChildren(icone('dado', 20), 'Sortear de novo');
       montar(saida, cartaoResultado(t, [h('a', { class: 'btn-sec', href: '#/titulo/' + t.id }, 'Ver detalhes')]));
@@ -143,7 +156,8 @@ export function telaSorteio({ raiz, ativa }) {
 
   function abaNovos() {
     const palco = h('div', { class: 'palco' }, h('div', { class: 'capa sem-imagem' }, '?'));
-    const saida = h('div', { class: 'sorteio-saida' });
+    const saida = h('div', { class: 'sorteio-saida' }, vazio('Escolha o tipo e o gênero e aperte “Descobrir!” para ver títulos novos que ainda não estão no catálogo.'));
+    const cena = h('div', { class: 'sorteio-cena' });
     const botao = h('button', { type: 'button', class: 'btn-primario grande', onclick: () => rodar(true) }, icone('dado', 20), 'Descobrir!');
     const aviso = h('p', { class: 'suave pequeno', role: 'status' });
     const chip = (texto, ligado, aoClicar) => h('button', { type: 'button', class: 'chip' + (ligado ? ' ligado' : ''), 'aria-pressed': ligado ? 'true' : 'false', onclick: aoClicar }, texto);
@@ -167,7 +181,7 @@ export function telaSorteio({ raiz, ativa }) {
           })))),
       blocoGenero,
       aviso, botao),
-      h('div', { class: 'sorteio-cena' }, palco, saida)));
+      (montar(cena, palco, saida), cena)));
     if (!generosTmdb.length) {
       const cat = escolha.categoriaNovo;
       chamar('sortear_tmdb', { categoria: cat, so_generos: true }).then((d) => {
@@ -195,7 +209,7 @@ export function telaSorteio({ raiz, ativa }) {
         const t = fila.shift();
         if (giro) await girar(palco, [t, ...fila], t);
         if (!ativa()) return;
-        montar(palco, capa(t));
+        montar(palco, capa(t)); fundoDaCena(cena, t);
         botao.disabled = false;
         botao.replaceChildren(icone('dado', 20), 'Outro');
         const add = h('button', { type: 'button', class: 'btn-primario' }, 'Adicionar ao catálogo');
