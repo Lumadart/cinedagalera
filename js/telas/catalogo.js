@@ -2,6 +2,7 @@ import { h, montar } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { cartaoTitulo, fecharMenus } from '../cartao.js';
 import { casca, esqueleto, avisar, ROTULOS, COR_STATUS, normalizar, CATEGORIAS } from '../ui.js';
+import { dropdown } from '../dropdown.js';
 
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
@@ -12,15 +13,11 @@ export function telaCatalogo({ raiz, ativa }) {
   const legendaEl = h('div', { class: 'legenda' });
   const gradeEl = h('div', { class: 'grade' });
   const avisoEl = h('div', { class: 'estado-vazio', role: 'status' });
-  const ordenar = h('select', {
-    id: 'ordem', 'aria-label': 'Ordenar',
-    onchange: (e) => { filtro.ordem = e.target.value; desenharGrade(); }
-  },
-    h('option', { value: 'recentes' }, 'Mais recentes'),
-    h('option', { value: 'az' }, 'A a Z'),
-    h('option', { value: 'vistos' }, 'Mais vistos pela galera')
-  );
-  ordenar.value = filtro.ordem;
+  const ordenar = dropdown({
+    id: 'ordem', rotulo: 'Ordenar', valor: filtro.ordem, mini: true,
+    opcoes: [['recentes', 'Mais recentes'], ['az', 'A a Z'], ['vistos', 'Mais vistos pela galera']],
+    aoMudar: (e) => { filtro.ordem = e.target.value; desenharGrade(); }
+  });
 
   const conteudo = h('div', { class: 'catalogo' },
     h('div', { class: 'titulo-linha' },

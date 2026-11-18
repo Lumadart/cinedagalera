@@ -2,6 +2,7 @@ import { h, montar } from '../../dom.js';
 import { chamar } from '../../api.js';
 import { esqueleto, avisar } from '../../ui.js';
 import { medalha } from '../../badges.js';
+import { dropdown } from '../../dropdown.js';
 
 export async function abaConquistas({ painel, ativa }) {
   montar(painel, esqueleto('lista', 5));
@@ -11,13 +12,13 @@ export async function abaConquistas({ painel, ativa }) {
   const NOMES = ['', 'Bronze', 'Prata', 'Ouro'];
   const linhas = d.badges.map((b) => {
     const max = b.metas ? 3 : 1;
-    const sel = h('select', { 'aria-label': 'Membro para ' + b.nome }, d.membros.map((m) => h('option', { value: m.id }, m.nome)));
-    const niv = h('select', { 'aria-label': 'Nível de ' + b.nome });
+    const sel = dropdown({ rotulo: 'Membro para ' + b.nome, mini: true, opcoes: d.membros.map((m) => [m.id, m.nome]) });
+    const niv = dropdown({ rotulo: 'Nível de ' + b.nome, mini: true });
     const aviso = h('small', { class: 'suave' });
     const pintarNiveis = () => {
       const q = b.membros[sel.value] || { nivel: 0, concedida: false };
-      montar(niv, h('option', { value: '0' }, q.concedida ? 'Retirar concessão' : 'Escolha o nível'),
-        Array.from({ length: max }, (_, i) => h('option', { value: String(i + 1) }, b.metas ? NOMES[i + 1] : 'Conceder')));
+      niv.definirOpcoes([['0', q.concedida ? 'Retirar concessão' : 'Escolha o nível'],
+        ...Array.from({ length: max }, (_, i) => [String(i + 1), b.metas ? NOMES[i + 1] : 'Conceder'])]);
       niv.value = q.concedida ? String(q.nivel) : '0';
       aviso.textContent = q.nivel ? `Atual: ${b.metas ? NOMES[q.nivel] : 'conquistada'}${q.concedida ? ' (concedida)' : ''}` : 'Ainda não tem';
     };

@@ -6,6 +6,7 @@ import { carregarEventos, limparEventos, colagem, TIPOS_EVENTO } from '../../eve
 import { dataLonga, paraLocal, paraIso } from '../../datas.js';
 import { seletorTitulos } from '../../seletor.js';
 import { ajustarImagem } from '../../imagem.js';
+import { dropdown } from '../../dropdown.js';
 
 // Qual formulário está aberto na aba: 'evento' | 'votacao' | 'discord'
 let gaveta = null;
@@ -71,7 +72,7 @@ async function desenharEventos({ painel, ativa }) {
     pintarPrevia();
     const campo = {
       nome: h('input', { type: 'text', maxlength: 80, value: e ? e.nome : '', required: true }),
-      tipo: h('select', null, Object.entries(TIPOS_EVENTO).map(([k, r]) => h('option', { value: k }, r))),
+      tipo: dropdown({ rotulo: 'Tipo do evento', opcoes: Object.entries(TIPOS_EVENTO) }),
       tema: h('input', { type: 'text', maxlength: 60, value: e ? e.tema : '', placeholder: 'Ex.: Halloween, Natal…' }),
       inicio: h('input', { type: 'datetime-local', value: e ? paraLocal(e.inicio) : '', required: true }),
       fim: h('input', { type: 'datetime-local', value: e && e.fim ? paraLocal(e.fim) : '' }),
@@ -128,7 +129,7 @@ async function desenharEventos({ painel, ativa }) {
   function formVotacao() {
     const sel = seletorTitulos([], 20);
     const pergunta = h('input', { type: 'text', maxlength: 120, placeholder: 'Ex.: Quais filmes vão para a maratona?', required: true });
-    const evento = h('select', null, h('option', { value: '' }, '(sem evento)'), d.eventos.filter((x) => !x.cancelado).map((x) => h('option', { value: x.id }, x.nome)));
+    const evento = dropdown({ rotulo: 'Evento', opcoes: [['', '(sem evento)'], ...d.eventos.filter((x) => !x.cancelado).map((x) => [x.id, x.nome])] });
     const prazo = h('input', { type: 'datetime-local' });
     const maxVotos = h('input', { type: 'number', min: 1, max: 20, value: 1 });
     const vagas = h('input', { type: 'number', min: 1, max: 20, value: 1 });

@@ -2,6 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, achaTitulo, statusDe, aplicarStatusLocal, removerStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
 import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
+import { dropdown } from '../dropdown.js';
 
 export function telaTitulo({ raiz, ativa, params }) {
   if (estado.catalogo) {
@@ -122,9 +123,7 @@ export function telaTitulo({ raiz, ativa, params }) {
   }
 
   function editarTitulo(caixa, t) {
-    const cat = h('select', { id: 'edit-cat', 'aria-label': 'Categoria' },
-      CATEGORIAS_POR_TIPO[t.tipo].map((c) => h('option', { value: c }, CATEGORIAS[c])));
-    cat.value = t.categoria;
+    const cat = dropdown({ id: 'edit-cat', rotulo: 'Categoria', valor: t.categoria, opcoes: CATEGORIAS_POR_TIPO[t.tipo].map((c) => [c, CATEGORIAS[c]]) });
     const rec = h('input', { id: 'edit-recado', maxlength: '200', value: t.recado, placeholder: 'Recado (opcional)' });
     const erro = h('p', { class: 'erro', role: 'alert' });
     montar(caixa, h('form', {

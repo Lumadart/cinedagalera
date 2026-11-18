@@ -2,6 +2,7 @@ import { h, montar } from '../../dom.js';
 import { estado, carregarCatalogo } from '../../estado.js';
 import { chamar } from '../../api.js';
 import { avisar, capa, normalizar, rotuloCategoria } from '../../ui.js';
+import { dropdown } from '../../dropdown.js';
 
 export async function abaTitulos({ painel, ativa }, busca = '') {
   montar(painel, h('p', { class: 'suave' }, 'Carregando…'));
@@ -22,10 +23,8 @@ export async function abaTitulos({ painel, ativa }, busca = '') {
           h('strong', null, t.nome), h('div', { class: 'suave pequeno' }, [rotuloCategoria(t), t.ano].filter(Boolean).join(' · ')),
           h('label', { class: 'indicador-adm' }, 'Indicado por',
             (() => {
-              const sel = h('select', { 'aria-label': 'Quem indicou ' + t.nome },
-                !por ? h('option', { value: '' }, '(sem indicador)') : null,
-                estado.catalogo.membros.map((m) => h('option', { value: m.id }, m.nome)));
-              sel.value = por ? por.id : '';
+              const sel = dropdown({ rotulo: 'Quem indicou ' + t.nome, mini: true, valor: por ? por.id : '',
+                opcoes: [...(!por ? [['', '(sem indicador)']] : []), ...estado.catalogo.membros.map((m) => [m.id, m.nome])] });
               sel.addEventListener('change', async () => {
                 try {
                   const r = await chamar('admin_atribuir_indicacao', { titulo_id: t.id, membro_id: sel.value });

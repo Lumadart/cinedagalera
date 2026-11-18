@@ -1,15 +1,13 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
-import { criarRolo, criarCarta, confete } from '../rolo.js';
+import { dropdown } from '../dropdown.js';
+import { criarCarta, confete } from '../carta.js';
 import { casca, esqueleto, capa, avisar, seguro, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 
 // O que a pessoa escolheu nos filtros fica guardado enquanto o site estiver aberto.
 const escolha = { aba: 'catalogo', categoria: 'todos', genero: '', quem: 'qualquer', categoriaNovo: 'filme', generoNovo: '' };
 let ultimoId = null;
-
-function lerEstilo() { try { return localStorage.getItem('sorteio_estilo') === 'rolo' ? 'rolo' : 'surpresa'; } catch { return 'surpresa'; } }
-escolha.estilo = lerEstilo();
 
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
 const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
@@ -39,17 +37,17 @@ function cartaoResultado(t, acoes) {
       h('div', { class: 'acoes-linha' }, acoes)));
 }
 
-/** A área do resultado: roleta em cima; depois do sorteio ela some e entram a capa e os dados. */
+/** A área do resultado: a carta em cima; depois do sorteio ela some e entram a capa e os dados. */
 function criarCena(textoVazio) {
-  const rolo = escolha.estilo === 'rolo' ? criarRolo() : criarCarta();
+  const carta = criarCarta();
   const palco = h('div', { class: 'palco' });
   const saida = h('div', { class: 'sorteio-saida' }, vazio(textoVazio));
-  const cena = h('div', { class: 'sorteio-cena' }, rolo.el, h('div', { class: 'sorteio-resultado' }, palco, saida));
+  const cena = h('div', { class: 'sorteio-cena' }, carta.el, h('div', { class: 'sorteio-resultado' }, palco, saida));
   return {
-    cena, saida, rolo,
+    cena, saida, carta,
     sorteando() { cena.classList.remove('tem-resultado'); montar(saida, h('p', { class: 'sorteio-sorteando', role: 'status' }, 'Sorteando…')); },
     async revelar(t, lista, acoes, aindaAtiva) {
-      await rolo.girar(lista, t);
+      await carta.girar(lista, t);
       if (!aindaAtiva()) return;
       montar(palco, capa(t)); fundoDaCena(cena, t);
       montar(saida, cartaoResultado(t, acoes));
@@ -58,19 +56,6 @@ function criarCena(textoVazio) {
       confete(cena);
     }
   };
-}
-
-/** Escolha entre "só o sorteado" (carta misteriosa) e a roleta que passa outras capas. */
-function seletorEstilo(aoMudar) {
-  const op = (id, texto, dica) => h('button', {
-    type: 'button', class: 'chip' + (escolha.estilo === id ? ' ligado' : ''), 'aria-pressed': escolha.estilo === id ? 'true' : 'false', title: dica,
-    onclick: () => { escolha.estilo = id; try { localStorage.setItem('sorteio_estilo', id); } catch { /* sem armazenamento: vale só nesta visita */ } aoMudar(); }
-  }, texto);
-  return h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Estilo do sorteio' },
-    h('span', { class: 'filtro-rotulo' }, 'Estilo'),
-    h('div', { class: 'filtros' },
-      op('surpresa', 'Surpresa', 'Só aparece o título sorteado'),
-      op('rolo', 'Roleta', 'As capas passam correndo até parar numa')));
 }
 
 export function telaSorteio({ raiz, ativa }) {
@@ -115,22 +100,17 @@ export function telaSorteio({ raiz, ativa }) {
     if (escolha.categoria !== 'todos' && !categorias.includes(escolha.categoria)) escolha.categoria = 'todos';
     if (escolha.genero && !generos.includes(escolha.genero)) escolha.genero = '';
 
-    const { cena, saida, rolo, sorteando, revelar } = criarCena('Escolha os filtros ao lado e aperte “Sortear!” — a roleta decide o que a galera vai ver.');
-    rolo.ocioso(opcoes());
+    const { cena, saida, carta, sorteando, revelar } = criarCena('Escolha os filtros ao lado e aperte “Sortear!” — a roleta decide o que a galera vai ver.');
+    carta.ocioso(opcoes());
     const contagem = h('p', { class: 'suave pequeno', role: 'status' });
     const botao = h('button', { type: 'button', class: 'btn-primario grande', onclick: rodar }, icone('dado', 20), 'Sortear!');
 
     const chip = (texto, ligado, aoClicar) => h('button', { type: 'button', class: 'chip' + (ligado ? ' ligado' : ''), 'aria-pressed': ligado ? 'true' : 'false', onclick: aoClicar }, texto);
     const mudar = (campo, valor) => () => { escolha[campo] = valor; abaCatalogo(); };
-    const selGenero = h('select', { 'aria-label': 'Gênero', onchange: (e) => { escolha.genero = e.target.value; abaCatalogo(); } },
-      h('option', { value: '' }, 'Qualquer gênero'), generos.map((g) => h('option', { value: g }, g)));
-    selGenero.value = escolha.genero;
-    const selQuem = h('select', { 'aria-label': 'Para quem', onchange: (e) => { escolha.quem = e.target.value; abaCatalogo(); } },
-      h('option', { value: 'qualquer' }, 'Qualquer título'),
-      h('option', { value: 'nao_vi' }, 'Que eu ainda não vi'),
-      h('option', { value: 'quero_ver' }, 'Da minha lista “quero ver”'),
-      h('option', { value: 'ninguem' }, 'Que ninguém da galera viu'));
-    selQuem.value = escolha.quem;
+    const selGenero = dropdown({ rotulo: 'Gênero', valor: escolha.genero, opcoes: [['', 'Qualquer gênero'], ...generos],
+      aoMudar: (e) => { escolha.genero = e.target.value; abaCatalogo(); } });
+    const selQuem = dropdown({ rotulo: 'Para quem', valor: escolha.quem, aoMudar: (e) => { escolha.quem = e.target.value; abaCatalogo(); },
+      opcoes: [['qualquer', 'Qualquer título'], ['nao_vi', 'Que eu ainda não vi'], ['quero_ver', 'Da minha lista “quero ver”'], ['ninguem', 'Que ninguém da galera viu']] });
 
     const n = opcoes().length;
     contagem.textContent = n ? `${n} ${n === 1 ? 'título possível' : 'títulos possíveis'} com esses filtros.` : 'Nenhum título com esses filtros.';
@@ -144,9 +124,9 @@ export function telaSorteio({ raiz, ativa }) {
           chip('Todos', escolha.categoria === 'todos', mudar('categoria', 'todos')),
           categorias.map((c) => chip(CATEGORIAS[c], escolha.categoria === c, mudar('categoria', c))))),
       h('div', { class: 'sorteio-selects' },
-        h('label', null, h('span', { class: 'rotulo' }, 'Gênero'), selGenero),
-        h('label', null, h('span', { class: 'rotulo' }, 'Para quem'), selQuem)),
-      seletorEstilo(abaCatalogo), contagem, botao),
+        h('div', null, h('span', { class: 'rotulo' }, 'Gênero'), selGenero),
+        h('div', null, h('span', { class: 'rotulo' }, 'Para quem'), selQuem)),
+      contagem, botao),
       cena));
 
     async function rodar() {
@@ -170,17 +150,16 @@ export function telaSorteio({ raiz, ativa }) {
   let personalizado = false;
 
   function abaNovos() {
-    const { cena, saida, rolo, sorteando, revelar } = criarCena('Escolha o tipo e o gênero e aperte “Descobrir!” para ver títulos novos que ainda não estão no catálogo.');
-    rolo.ocioso(fila);
+    const { cena, saida, carta, sorteando, revelar } = criarCena('Escolha o tipo e o gênero e aperte “Descobrir!” para ver títulos novos que ainda não estão no catálogo.');
+    carta.ocioso(fila);
     const botao = h('button', { type: 'button', class: 'btn-primario grande', onclick: () => rodar(true) }, icone('dado', 20), 'Descobrir!');
     const aviso = h('p', { class: 'suave pequeno', role: 'status' });
     const chip = (texto, ligado, aoClicar) => h('button', { type: 'button', class: 'chip' + (ligado ? ' ligado' : ''), 'aria-pressed': ligado ? 'true' : 'false', onclick: aoClicar }, texto);
-    const selGenero = h('select', { 'aria-label': 'Gênero', onchange: (e) => { escolha.generoNovo = e.target.value; fila = []; } },
-      h('option', { value: '' }, 'Pelo gosto da galera'));
-    const blocoGenero = h('div', { class: 'sorteio-selects' }, h('label', null, h('span', { class: 'rotulo' }, 'Gênero'), selGenero));
+    const selGenero = dropdown({ rotulo: 'Gênero', valor: escolha.generoNovo, opcoes: [['', 'Pelo gosto da galera'], ...generosTmdb],
+      aoMudar: (e) => { escolha.generoNovo = e.target.value; fila = []; } });
+    const blocoGenero = h('div', { class: 'sorteio-selects' }, h('div', null, h('span', { class: 'rotulo' }, 'Gênero'), selGenero));
     const preencherGeneros = () => {
-      selGenero.append(...generosTmdb.map((g) => h('option', { value: g }, g)));
-      selGenero.value = escolha.generoNovo;
+      selGenero.definirOpcoes([['', 'Pelo gosto da galera'], ...generosTmdb]);
       blocoGenero.hidden = !generosTmdb.length;
     };
     preencherGeneros();
@@ -194,7 +173,7 @@ export function telaSorteio({ raiz, ativa }) {
             escolha.categoriaNovo = c; escolha.generoNovo = ''; fila = []; generosTmdb = []; gostos = []; abaNovos();
           })))),
       blocoGenero,
-      seletorEstilo(abaNovos), aviso, botao),
+      aviso, botao),
       cena));
     if (!generosTmdb.length) {
       const cat = escolha.categoriaNovo;

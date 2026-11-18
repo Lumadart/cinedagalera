@@ -2,6 +2,7 @@ import { h, montar } from '../dom.js';
 import { estado } from '../estado.js';
 import { chamar } from '../api.js';
 import { casca, capa, avisar, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
+import { dropdown } from '../dropdown.js';
 
 export function telaAdicionar({ raiz, ativa }) {
   const campo = h('input', {
@@ -58,9 +59,7 @@ export function telaAdicionar({ raiz, ativa }) {
 
   function item(r) {
     const acao = h('div', { class: 'resultado-acao' });
-    const cat = h('select', { 'aria-label': 'Categoria de ' + r.nome },
-      CATEGORIAS_POR_TIPO[r.tipo].map((c) => h('option', { value: c }, CATEGORIAS[c])));
-    cat.value = r.categoria;
+    const cat = dropdown({ rotulo: 'Categoria de ' + r.nome, mini: true, valor: r.categoria, opcoes: CATEGORIAS_POR_TIPO[r.tipo].map((c) => [c, CATEGORIAS[c]]) });
     const rec = h('input', { maxlength: '200', placeholder: 'Recado (opcional)', 'aria-label': 'Recado sobre ' + r.nome });
     if (r.ja_no_catalogo) {
       acao.append(h('span', { class: 'suave pequeno' }, 'Já está no catálogo'),

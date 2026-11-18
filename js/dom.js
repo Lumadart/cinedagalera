@@ -33,6 +33,7 @@ const ICONES = {
   play: { d: 'M8 5.5l11 6.5-11 6.5z', cheio: true },
   marcador: { d: 'M7 4h10v16l-5-4-5 4z' },
   busca: { d: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4' },
+  seta: { d: 'M6 9l6 6 6-6' },
   voltar: { d: 'M15 5l-7 7 7 7' },
   inicio: { d: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10' },
   grade: { d: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
