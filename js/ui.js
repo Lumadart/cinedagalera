@@ -77,14 +77,20 @@ export function avatar(membro, { tamanho = 36, cor = null, dica = null } = {}) {
 
 /** Imagem em paisagem (TMDB backdrop). Se o título não tiver, usa a capa. */
 export function fundoImg(titulo, classe = 'fundo-img') {
-  const src = seguro(titulo.fundo_url) || seguro(titulo.capa_url);
+  const src = seguro(tmdbTamanho(titulo.fundo_url, 'w1280')) || seguro(titulo.capa_url);
   if (!src) return null;
   return suave(h('img', { class: classe, src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }));
 }
 
-export function capa(titulo) {
+/** Troca o tamanho de uma imagem do TMDB (w500 → w780, w780 → w1280...). Outras origens ficam como estão. */
+export function tmdbTamanho(url, tamanho) {
+  return typeof url === 'string' ? url.replace(/(image\.tmdb\.org\/t\/p\/)w\d+/, '$1' + tamanho) : url;
+}
+
+/** Capa do título. Com `grande`, pede a versão de alta qualidade (para capas em destaque). */
+export function capa(titulo, grande = false) {
   const el = h('div', { class: 'capa' });
-  const foto = seguro(titulo.capa_url);
+  const foto = seguro(grande ? tmdbTamanho(titulo.capa_url, 'w780') : titulo.capa_url);
   if (foto) {
     const img = h('img', { src: foto, alt: 'Capa de ' + titulo.nome, loading: 'lazy', referrerpolicy: 'no-referrer' });
     suave(img);

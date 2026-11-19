@@ -49,7 +49,7 @@ function criarCena(textoVazio) {
     async revelar(t, lista, acoes, aindaAtiva) {
       await carta.girar(lista, t);
       if (!aindaAtiva()) return;
-      montar(palco, capa(t)); fundoDaCena(cena, t);
+      montar(palco, capa(t, true)); fundoDaCena(cena, t);
       montar(saida, cartaoResultado(t, acoes));
       cena.classList.add('tem-resultado');
       saida.querySelector('.sorteado')?.classList.add('entrou');

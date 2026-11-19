@@ -49,7 +49,7 @@ export function criarCarta() {
     giro.getAnimations().forEach((a) => a.cancel());
     clarao.classList.remove('estourou');
     carta.classList.remove('ocioso', 'venceu');
-    const foto = capa(final);
+    const foto = capa(final, true);
     foto.querySelector('img')?.setAttribute('loading', 'eager');
     capaEl.replaceChildren(foto);
     void carta.offsetWidth;                       // reinicia a animação de tremer

@@ -3,6 +3,7 @@ import { estado, carregarCatalogo, achaTitulo, statusDe, aplicarStatusLocal, rem
 import { chamar } from '../api.js';
 import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 import { dropdown } from '../dropdown.js';
+import { extrasDoTitulo } from '../extras-titulo.js';
 
 export function telaTitulo({ raiz, ativa, params }) {
   if (estado.catalogo) {
@@ -47,7 +48,7 @@ export function telaTitulo({ raiz, ativa, params }) {
       h('section', { class: 'tit-hero' },
         fundoImg(t, 'tit-fundo'),
         h('div', { class: 'tit-topo' },
-          h('div', { class: 'tit-capa' }, capa(t)),
+          h('div', { class: 'tit-capa' }, capa(t, true)),
           h('div', { class: 'tit-info' },
             h('div', { class: 'linha-pills' },
               h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
@@ -72,6 +73,7 @@ export function telaTitulo({ raiz, ativa, params }) {
           h('div', { class: 'tile tile-indicacao' }, indicacao(t))
         )
       ),
+      extrasDoTitulo(t, ativa),
       h('section', { class: 'tit-corpo' }, painelGrupo(t, linhas, membros, contagem), painelMeu(t, meu))
     );
     montar(raiz, casca('catalogo', conteudo));

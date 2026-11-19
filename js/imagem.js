@@ -65,7 +65,7 @@ export async function ajustarImagem(arquivo, largura, altura, { circulo = false,
       const c = saida.getContext('2d');
       c.fillStyle = '#231b20'; c.fillRect(0, 0, largura, altura);
       c.drawImage(origem, largura / 2 - cx * sc, altura / 2 - cy * sc, iw * sc, ih * sc);
-      fechar(saida.toDataURL('image/jpeg', 0.88));
+      fechar(saida.toDataURL('image/jpeg', 0.92));
     };
     const teclas = (e) => { if (e.key === 'Escape') fechar(null); };
     document.addEventListener('keydown', teclas);
