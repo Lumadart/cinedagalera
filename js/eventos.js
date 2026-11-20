@@ -49,3 +49,33 @@ export function programacao(e) {
   return e.titulos.map((id) => ({ titulo_id: id, inicio: (e.horarios || {})[id] || '' }))
     .sort((a, b) => (a.inicio || '~').localeCompare(b.inicio || '~'));
 }
+
+/** Contagem regressiva ao vivo (dias, horas, minutos, segundos). Para sozinha quando a tela sai ou o evento começa. */
+export function relogio(iso, ativa) {
+  const alvo = new Date(iso).getTime();
+  const z = (n) => String(n).padStart(2, '0');
+  const unidade = (rotulo) => { const n = h('b', null, '00'); return { n, el: h('div', { class: 'rel-un' }, n, h('small', null, rotulo)) }; };
+  const d = unidade('dias'), hh = unidade('horas'), m = unidade('min'), s = unidade('seg');
+  const el = h('div', { class: 'relogio', role: 'timer', 'aria-label': 'Contagem regressiva para o evento' }, d.el, hh.el, m.el, s.el);
+  let t = null;
+  function tick() {
+    if (!el.isConnected && t) { clearInterval(t); return; }
+    if (!ativa()) { clearInterval(t); return; }
+    const falta = Math.max(0, alvo - Date.now());
+    if (falta === 0) { clearInterval(t); el.replaceChildren(h('span', { class: 'rel-agora' }, 'Já começou! 🎬')); return; }
+    const seg = Math.floor(falta / 1000);
+    d.n.textContent = z(Math.floor(seg / 86400)); hh.n.textContent = z(Math.floor(seg % 86400 / 3600));
+    m.n.textContent = z(Math.floor(seg % 3600 / 60)); s.n.textContent = z(seg % 60);
+  }
+  tick();
+  t = setInterval(tick, 1000);
+  return el;
+}
+
+/** Selo de calendário: dia grande e mês abreviado. */
+export function seloData(iso) {
+  const dt = new Date(iso);
+  return h('div', { class: 'ev-selo', 'aria-hidden': 'true' },
+    h('b', null, String(dt.getDate()).padStart(2, '0')),
+    h('small', null, dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')));
+}

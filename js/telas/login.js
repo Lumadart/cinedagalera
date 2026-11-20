@@ -5,9 +5,10 @@ import { guardarToken } from '../sessao.js';
 import { NOME_DO_GRUPO } from '../config.js';
 import { marcaLogo } from '../ui.js';
 
-export function telaLogin({ raiz }) {
-  let modo = 'entrar'; // 'entrar' ou 'esqueci'
+export function telaLogin({ raiz, params }) {
+  let modo = params && params.convite !== undefined ? 'convite' : 'entrar'; // 'entrar', 'esqueci' ou 'convite'
   let emailDigitado = '';
+  let codigoDigitado = (params && params.convite) || '';
 
   function desenhar() {
     montar(raiz, h('div', { class: 'login' },
@@ -16,7 +17,7 @@ export function telaLogin({ raiz }) {
         h('h1', null, 'Nosso catálogo de filmes e séries, em um só lugar.'),
         h('p', null, 'Registre o que viu, acompanhe o que está assistindo e descubra o que a galera quer ver.')
       ),
-      h('section', { class: 'login-form' }, modo === 'entrar' ? formEntrar() : formEsqueci())
+      h('section', { class: 'login-form' }, modo === 'entrar' ? formEntrar() : modo === 'esqueci' ? formEsqueci() : formConvite())
     ));
     const primeiro = raiz.querySelector('input');
     if (primeiro) primeiro.focus();
@@ -58,7 +59,8 @@ export function telaLogin({ raiz }) {
       h('label', { for: 'email' }, 'E-mail'), email,
       h('div', { class: 'rotulo-linha' }, h('label', { for: 'pin' }, 'PIN'), mostrar), pin,
       erro, botao,
-      h('button', { type: 'button', class: 'link-discreto centro', onclick: () => { emailDigitado = email.value.trim(); modo = 'esqueci'; desenhar(); } }, 'Esqueci meu PIN')
+      h('button', { type: 'button', class: 'link-discreto centro', onclick: () => { emailDigitado = email.value.trim(); modo = 'esqueci'; desenhar(); } }, 'Esqueci meu PIN'),
+      h('button', { type: 'button', class: 'link-discreto centro', onclick: () => { emailDigitado = email.value.trim(); modo = 'convite'; desenhar(); } }, 'Tenho um convite')
     );
   }
 
@@ -92,6 +94,42 @@ export function telaLogin({ raiz }) {
       h('p', { class: 'suave pequeno' }, 'Se o e-mail não chegar, confira o spam. Se você não tem mais acesso a ele, peça a um admin para gerar um novo PIN.'),
       h('button', { type: 'button', class: 'link-discreto centro', onclick: () => { emailDigitado = email.value.trim(); modo = 'entrar'; desenhar(); } }, 'Voltar para o login')
     );
+  }
+
+  function formConvite() {
+    const msg = h('p', { class: 'ok-msg', role: 'status' });
+    const erro = h('p', { class: 'erro', role: 'alert' });
+    const codigo = h('input', { id: 'convite-codigo', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', maxlength: '9', required: true, value: codigoDigitado, placeholder: 'XXXX-XXXX' });
+    // coloca o hífen sozinho: K7MQ4XPA → K7MQ-4XPA
+    codigo.addEventListener('input', () => {
+      const limpo = codigo.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+      codigo.value = limpo.length > 4 ? limpo.slice(0, 4) + '-' + limpo.slice(4) : limpo;
+    });
+    codigo.value = codigoDigitado.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8).replace(/^(.{4})(.+)$/, '$1-$2');
+    const nome = h('input', { id: 'convite-nome', maxlength: '40', autocomplete: 'name', required: true, placeholder: 'Como a galera te chama' });
+    const email = h('input', { id: 'convite-email', type: 'email', autocomplete: 'email', required: true, value: emailDigitado, placeholder: 'voce@email.com' });
+    const botao = h('button', { type: 'submit', class: 'btn-primario cheio' }, 'Entrar no grupo');
+    return h('form', {
+      class: 'form-login', novalidate: true,
+      onsubmit: async (e) => {
+        e.preventDefault(); erro.textContent = ''; msg.textContent = '';
+        if (codigo.value.length < 9 || nome.value.trim().length < 2 || !email.value.trim()) { erro.textContent = 'Preencha o código, o nome e o e-mail.'; return; }
+        botao.disabled = true; botao.textContent = 'Enviando…';
+        try {
+          const d = await chamar('aceitar_convite', { codigo: codigo.value, nome: nome.value.trim(), email: email.value.trim() });
+          emailDigitado = email.value.trim();
+          msg.textContent = d.mensagem;
+          botao.replaceWith(h('button', { type: 'button', class: 'btn-primario cheio', onclick: () => { modo = 'entrar'; desenhar(); } }, 'Ir para o login'));
+        } catch (err) { erro.textContent = err.message; botao.disabled = false; botao.textContent = 'Entrar no grupo'; }
+      }
+    },
+      h('h2', null, 'Tenho um convite'),
+      h('p', { class: 'suave' }, 'Use o código que um admin te passou. O seu PIN de acesso chega por e-mail.'),
+      h('label', { for: 'convite-codigo' }, 'Código do convite'), codigo,
+      h('label', { for: 'convite-nome' }, 'Nome'), nome,
+      h('label', { for: 'convite-email' }, 'E-mail'), email,
+      msg, erro, botao,
+      h('button', { type: 'button', class: 'link-discreto centro', onclick: () => { modo = 'entrar'; desenhar(); } }, 'Voltar para o login'));
   }
 
   desenhar();

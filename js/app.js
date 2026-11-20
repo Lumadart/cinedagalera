@@ -21,6 +21,7 @@ let versao = 0; // cada troca de tela invalida respostas atrasadas da tela anter
 function rotaAtual() {
   const partes = location.hash.replace(/^#/, '').split('/').filter(Boolean);
   if (partes[0] === 'entrar') return { nome: 'entrar' };
+  if (partes[0] === 'convite') return { nome: 'entrar', convite: (partes[1] || '').slice(0, 20) };   // link de convite: #/convite/CODIGO
   if (partes[0] === 'perfil' && partes[1] === 'editar') return { nome: 'editar' };
   if (partes[0] === 'perfil' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'perfil', id: partes[1] };
   if (partes[0] === 'perfil') return { nome: 'perfil', id: null };

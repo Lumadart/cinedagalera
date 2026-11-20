@@ -2,6 +2,7 @@ import { h, montar } from '../dom.js';
 import { estado } from '../estado.js';
 import { casca, esqueleto } from '../ui.js';
 import { abaMembros } from './admin/membros.js';
+import { abaConvites } from './admin/convites.js';
 import { abaTitulos } from './admin/titulos.js';
 import { abaEventos } from './admin/eventos.js';
 import { abaConquistas } from './admin/conquistas.js';
@@ -9,6 +10,7 @@ import { abaManutencao } from './admin/manutencao.js';
 
 const ABAS = [
   ['membros', 'Membros', abaMembros],
+  ['convites', 'Convites', abaConvites],
   ['titulos', 'Títulos', abaTitulos],
   ['eventos', 'Eventos', abaEventos],
   ['conquistas', 'Conquistas', abaConquistas],

@@ -4,7 +4,8 @@ import { casca, esqueleto, avisar, capa, avatar } from '../ui.js';
 import { haQuanto, dataLonga, contagem, jaComecou, horaCurta } from '../datas.js';
 import { buscaTitulos } from '../seletor.js';
 import { chamar } from '../api.js';
-import { carregarEventos, limparEventos, colagem, quemVai, programacao, TIPOS_EVENTO } from '../eventos.js';
+import { carregarEventos, limparEventos, colagem, quemVai, programacao, relogio, seloData, TIPOS_EVENTO } from '../eventos.js';
+import { seguro, suave, fundoImg } from '../ui.js';
 
 export function telaEventos({ raiz, ativa }) {
   const area = h('div', { class: 'eventos' }, esqueleto('lista', 3));
@@ -21,15 +22,17 @@ export function telaEventos({ raiz, ativa }) {
     const fechadas = d.votacoes.filter((v) => v.encerrada).slice(-4).reverse();
     const refazer = async () => { limparEventos(); try { desenhar(await carregarEventos({ forcar: true })); } catch (e) { avisar(e.message, 'erro'); } };
 
+    const [destaque, ...resto] = prox;
     montar(area,
       h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Eventos'), h('p', { class: 'suave' }, 'Maratonas, noites temáticas e votações da galera.'))),
+      destaque ? heroEvento(destaque, membros, d, refazer) : h('section', { class: 'ev-vazio' }, icone('calendario', 44), h('h2', null, 'Nenhum evento marcado'),
+        h('p', { class: 'suave' }, 'Quando a galera marcar uma maratona ou noite temática, ela aparece aqui com contagem regressiva.' + (estado.membro.admin ? ' Crie um em Administração → Eventos.' : ''))),
       abertas.length ? h('section', { class: 'bloco-home' },
         h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('check', 20)), 'Votações abertas')),
         h('div', { class: 'lista-votacoes' }, abertas.map((v) => cartaoVotacao(v, refazer)))) : null,
-      h('section', { class: 'bloco-home' },
-        h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('calendario', 20)), 'Próximos eventos')),
-        prox.length ? h('div', { class: 'lista-eventos' }, prox.map((e) => cartaoEvento(e, membros, d, refazer)))
-          : h('p', { class: 'suave' }, 'Nenhum evento marcado por enquanto.' + (estado.membro.admin ? ' Crie um em Administração → Eventos.' : ''))),
+      resto.length ? h('section', { class: 'bloco-home' },
+        h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('calendario', 20)), 'Depois disso')),
+        h('div', { class: 'lista-eventos' }, resto.map((e) => cartaoEvento(e, membros, d, refazer)))) : null,
       fechadas.length ? h('section', { class: 'bloco-home' },
         h('div', { class: 'titulo-secao' }, h('h2', null, 'Votações encerradas')),
         h('div', { class: 'lista-votacoes' }, fechadas.map((v) => cartaoVotacao(v, refazer)))) : null,
@@ -38,12 +41,11 @@ export function telaEventos({ raiz, ativa }) {
         h('div', { class: 'lista-eventos' }, passados.map((e) => cartaoEvento(e, membros, d, refazer)))) : null);
   }
 
-  function cartaoEvento(e, membros, d, refazer) {
+  /** Botões "Eu vou / Talvez / Não vou" + quem já confirmou. */
+  function presenca(e, membros, refazer) {
     const minha = e.presencas[estado.membro.id] || '';
     const passou = jaComecou(e);
     const vao = quemVai(e, membros, 'vou'), talvez = quemVai(e, membros, 'talvez');
-    const ligada = d.votacoes.find((v) => v.evento_id === e.id && !v.encerrada);
-    const ts = e.titulos.map(achaTitulo).filter(Boolean);
     const botao = (valor, rotulo) => h('button', {
       type: 'button', class: 'resp' + (minha === valor ? ' ligada' : ''), 'aria-pressed': String(minha === valor), disabled: passou,
       onclick: async (ev) => {
@@ -52,25 +54,54 @@ export function telaEventos({ raiz, ativa }) {
         catch (err) { avisar(err.message, 'erro'); ev.target.disabled = false; }
       }
     }, rotulo);
+    return h('div', { class: 'ev-presenca' },
+      h('div', { class: 'resps', role: 'group', 'aria-label': 'Sua presença' }, botao('vou', 'Eu vou'), botao('talvez', 'Talvez'), botao('nao_vou', 'Não vou')),
+      h('div', { class: 'ev-quem' }, vao.pilha, h('span', { class: 'suave pequeno' }, `${vao.total} ${vao.total === 1 ? 'confirmado' : 'confirmados'}` + (talvez.total ? ` · ${talvez.total} talvez` : ''))));
+  }
+
+  /** O próximo evento, em destaque: imagem, contagem regressiva, programação em linha do tempo e presença. */
+  function heroEvento(e, membros, d, refazer) {
+    const primeiro = e.titulos.map(achaTitulo).find(Boolean);
+    const imagem = seguro(e.imagem_url);
+    const fundo = imagem ? suave(h('img', { class: 'ev-hero-img', src: imagem, alt: '', referrerpolicy: 'no-referrer' })) : (primeiro ? fundoImg(primeiro, 'ev-hero-img') : null);
+    const ligada = d.votacoes.find((v) => v.evento_id === e.id && !v.encerrada);
+    const tem = e.titulos.length > 0;
+    return h('section', { class: 'ev-hero' },
+      fundo, h('div', { class: 'ev-hero-veu' }),
+      h('div', { class: 'ev-hero-conteudo' + (tem ? '' : ' sem-programa') },
+        h('div', { class: 'ev-hero-info' },
+          h('div', { class: 'ev-linha' }, h('span', { class: 'ev-etiqueta' }, 'Próximo evento'), h('span', { class: 'pill-tipo fixo' }, TIPOS_EVENTO[e.tipo]), e.tema ? h('span', { class: 'suave pequeno' }, e.tema) : null),
+          h('h2', null, e.nome),
+          h('p', { class: 'ev-quando' }, icone('calendario', 18), dataLonga(e.inicio), e.local ? ' · ' + e.local : ''),
+          relogio(e.inicio, ativa),
+          e.descricao ? h('p', { class: 'ev-desc' }, e.descricao) : null,
+          presenca(e, membros, refazer),
+          ligada ? h('p', { class: 'ev-aviso' }, '🗳️ Tem votação aberta para este evento — veja logo abaixo.') : null),
+        tem ? h('div', { class: 'ev-hero-programa' }, programa(e)) : null),
+      e.sugestoes_max > 0 ? h('div', { class: 'ev-hero-sugestoes' }, sugestoes(e, membros, refazer)) : null);
+  }
+
+  function cartaoEvento(e, membros, d, refazer) {
+    const ligada = d.votacoes.find((v) => v.evento_id === e.id && !v.encerrada);
+    const ts = e.titulos.map(achaTitulo).filter(Boolean);
     return h('article', { class: 'card evento' },
       colagem(e),
       h('div', { class: 'ev-corpo' },
-        h('div', { class: 'ev-linha' }, h('span', { class: 'pill-tipo fixo' }, TIPOS_EVENTO[e.tipo]), e.tema ? h('span', { class: 'suave pequeno' }, e.tema) : null),
-        h('h3', null, e.nome),
+        h('div', { class: 'ev-linha' }, seloData(e.inicio), h('div', { class: 'ev-titulo-bloco' },
+          h('div', { class: 'ev-linha' }, h('span', { class: 'pill-tipo fixo' }, TIPOS_EVENTO[e.tipo]), e.tema ? h('span', { class: 'suave pequeno' }, e.tema) : null),
+          h('h3', null, e.nome))),
         h('p', { class: 'ev-quando' }, icone('calendario', 16), dataLonga(e.inicio), e.local ? ' · ' + e.local : '', h('span', { class: 'suave' }, ' · ' + contagem(e.inicio))),
         e.descricao ? h('p', { class: 'suave ev-desc' }, e.descricao) : null,
         ts.length ? programa(e) : null,
         e.sugestoes_max > 0 ? sugestoes(e, membros, refazer) : null,
         ligada ? h('p', { class: 'ev-aviso' }, 'Tem votação aberta ligada a este evento ↑') : null,
-        h('div', { class: 'ev-presenca' },
-          h('div', { class: 'resps', role: 'group', 'aria-label': 'Sua presença' }, botao('vou', 'Eu vou'), botao('talvez', 'Talvez'), botao('nao_vou', 'Não vou')),
-          h('div', { class: 'ev-quem' }, vao.pilha, h('span', { class: 'suave pequeno' }, `${vao.total} ${vao.total === 1 ? 'confirmado' : 'confirmados'}` + (talvez.total ? ` · ${talvez.total} talvez` : ''))))));
+        presenca(e, membros, refazer)));
   }
 
   /** Os filmes que vão, com dia e horário. */
   function programa(e) {
     const itens = programacao(e).map((x) => ({ ...x, t: achaTitulo(x.titulo_id) })).filter((x) => x.t);
-    return h('div', { class: 'programa' },
+    return h('div', { class: 'programa linha-tempo' },
       h('h4', null, 'Programação'),
       h('ol', null, itens.map((x) => h('li', null,
         h('a', { href: '#/titulo/' + x.t.id, class: 'prog-item' },
