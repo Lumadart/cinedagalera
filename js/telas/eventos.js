@@ -4,15 +4,20 @@ import { casca, esqueleto, avisar, capa, avatar } from '../ui.js';
 import { haQuanto, dataLonga, contagem, jaComecou, horaCurta } from '../datas.js';
 import { buscaTitulos } from '../seletor.js';
 import { chamar } from '../api.js';
-import { carregarEventos, limparEventos, colagem, quemVai, programacao, relogio, seloData, TIPOS_EVENTO } from '../eventos.js';
+import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, programacao, relogio, seloData, TIPOS_EVENTO } from '../eventos.js';
 import { seguro, suave, fundoImg } from '../ui.js';
 
 export function telaEventos({ raiz, ativa }) {
+  const rotuloCat = (t) => (t.tipo === 'filme' ? 'Filme' : 'Série');
   const area = h('div', { class: 'eventos' }, esqueleto('lista', 3));
   montar(raiz, casca('eventos', area));
+  // Se já temos o catálogo e uma versão anterior dos eventos, mostra na hora e atualiza em segundo plano.
+  const previa = estado.catalogo ? previaEventos() : null;
+  let mostrado = previa ? JSON.stringify(previa) : '';
+  if (previa) desenhar(previa);
   Promise.all([carregarCatalogo(), carregarEventos({ forcar: true })])
-    .then(([, d]) => { if (ativa()) desenhar(d); })
-    .catch((e) => { if (ativa()) montar(area, h('p', { class: 'erro' }, e.message)); });
+    .then(([, d]) => { if (ativa() && JSON.stringify(d) !== mostrado) desenhar(d); })
+    .catch((e) => { if (ativa() && !previa) montar(area, h('p', { class: 'erro' }, e.message)); });
 
   function desenhar(d) {
     const membros = estado.catalogo.membros;
@@ -22,6 +27,7 @@ export function telaEventos({ raiz, ativa }) {
     const fechadas = d.votacoes.filter((v) => v.encerrada).slice(-4).reverse();
     const refazer = async () => { limparEventos(); try { desenhar(await carregarEventos({ forcar: true })); } catch (e) { avisar(e.message, 'erro'); } };
 
+    refazer.local = () => desenhar(d);   // redesenha com o que já está na memória (usado pelo "Eu vou" instantâneo)
     const [destaque, ...resto] = prox;
     montar(area,
       h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Eventos'), h('p', { class: 'suave' }, 'Maratonas, noites temáticas e votações da galera.'))),
@@ -48,10 +54,13 @@ export function telaEventos({ raiz, ativa }) {
     const vao = quemVai(e, membros, 'vou'), talvez = quemVai(e, membros, 'talvez');
     const botao = (valor, rotulo) => h('button', {
       type: 'button', class: 'resp' + (minha === valor ? ' ligada' : ''), 'aria-pressed': String(minha === valor), disabled: passou,
-      onclick: async (ev) => {
-        ev.target.disabled = true;
-        try { await chamar('evento_presenca', { evento_id: e.id, resposta: minha === valor ? '' : valor }); await refazer(); }
-        catch (err) { avisar(err.message, 'erro'); ev.target.disabled = false; }
+      onclick: async () => {
+        // muda na hora; se o servidor recusar, volta ao que era
+        const novo = minha === valor ? '' : valor, antes = e.presencas[estado.membro.id];
+        const aplicar = (v) => { if (v) e.presencas[estado.membro.id] = v; else delete e.presencas[estado.membro.id]; if (refazer.local) refazer.local(); };
+        aplicar(novo);
+        try { await chamar('evento_presenca', { evento_id: e.id, resposta: novo }); limparEventos(); }
+        catch (err) { avisar(err.message, 'erro'); aplicar(antes); }
       }
     }, rotulo);
     return h('div', { class: 'ev-presenca' },
@@ -109,7 +118,6 @@ export function telaEventos({ raiz, ativa }) {
           h('span', { class: 'prog-nome' }, h('strong', null, x.t.nome), h('small', { class: 'suave' }, [x.t.ano, rotuloCat(x.t)].filter(Boolean).join(' · '))),
           h('span', { class: 'prog-hora' + (x.inicio ? '' : ' a-definir') }, x.inicio ? horaCurta(x.inicio) : 'horário a definir'))))));
   }
-  const rotuloCat = (t) => (t.tipo === 'filme' ? 'Filme' : 'Série');
 
   /** Sugestões da galera para o evento. */
   function sugestoes(e, membros, refazer) {
@@ -171,9 +179,9 @@ export function telaEventos({ raiz, ativa }) {
           podeVer ? h('div', { class: 'vt-barra', 'aria-label': `${n} votos` }, h('span', { style: { width: Math.round((n / max) * 100) + '%' } })) : null,
           podeVer ? h('small', { class: 'suave' }, `${n} ${n === 1 ? 'voto' : 'votos'}` + (venceu ? ' · 🏆' : meu ? ' · seu voto' : '')) : (meu ? h('small', { class: 'suave' }, '✓ seu voto') : null),
           aberta && restantes > 0 && !meu ? h('button', { type: 'button', class: 'btn-contorno', onclick: async (ev) => {
-            ev.target.disabled = true;
+            ev.currentTarget.classList.add('salvando'); ev.currentTarget.disabled = true;
             try { await chamar('votar', { votacao_id: v.id, titulo_id: id }); avisar('Voto registrado!'); await refazer(); }
-            catch (err) { avisar(err.message, 'erro'); ev.target.disabled = false; }
+            catch (err) { avisar(err.message, 'erro'); ev.currentTarget.classList.remove('salvando'); ev.currentTarget.disabled = false; }
           } }, 'Votar') : null);
       })),
       aberta && podeVer === false && v.max_votos > 1 ? h('p', { class: 'suave pequeno' }, 'O placar aparece quando você usar todos os seus votos.') : null,

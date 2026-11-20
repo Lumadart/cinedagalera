@@ -3,7 +3,7 @@ import { estado, carregarCatalogo, achaTitulo, statusDe, aplicarStatusLocal, rem
 import { chamar } from '../api.js';
 import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
 import { dropdown } from '../dropdown.js';
-import { extrasDoTitulo } from '../extras-titulo.js';
+import { extrasDoTitulo, linkTmdb } from '../extras-titulo.js';
 
 export function telaTitulo({ raiz, ativa, params }) {
   if (estado.catalogo) {
@@ -57,7 +57,8 @@ export function telaTitulo({ raiz, ativa, params }) {
             h('h1', null, t.nome),
             nomesExtras(t),
             t.generos.length ? h('div', { class: 'generos' }, t.generos.map((g) => h('span', { class: 'genero' }, g))) : null,
-            sinopse(t)
+            sinopse(t),
+            linkTmdb(t)
           )
         ),
         h('div', { class: 'tit-stats' },
@@ -246,7 +247,7 @@ export function telaTitulo({ raiz, ativa, params }) {
           dados.temporada_atual = temporada.value.trim() === '' ? '' : Number(temporada.value);
           dados.episodio_atual = episodio.value.trim() === '' ? '' : Number(episodio.value);
         }
-        salvar.disabled = true; salvar.textContent = 'Salvando…';
+        salvar.disabled = true; salvar.classList.add('salvando'); salvar.textContent = 'Salvando…';
         try {
           await chamar('marcar_status', dados);
           aplicarStatusLocal(estado.membro.id, t.id, {
@@ -259,7 +260,7 @@ export function telaTitulo({ raiz, ativa, params }) {
           desenhar();
         } catch (err) {
           erro.textContent = err.message;
-          salvar.disabled = false; salvar.textContent = 'Salvar';
+          salvar.disabled = false; salvar.classList.remove('salvando'); salvar.textContent = 'Salvar';
         }
       }
     },

@@ -11,10 +11,16 @@ let cache = null, quando = 0, voo = null;
 export function carregarEventos({ forcar = false } = {}) {
   if (!forcar && cache && Date.now() - quando < 30000) return Promise.resolve(cache);
   if (voo) return voo;
-  voo = chamar('eventos').then((d) => { cache = d; quando = Date.now(); return d; }).finally(() => { voo = null; });
+  voo = chamar('eventos').then((d) => { cache = d; quando = Date.now(); guardarPrevia(d); return d; }).finally(() => { voo = null; });
   return voo;
 }
-export function limparEventos() { cache = null; quando = 0; }
+/** Última lista conhecida (mesmo velha): deixa a página de Eventos abrir na hora enquanto a atual chega. */
+export function previaEventos() {
+  if (cache) return cache;
+  try { return JSON.parse(sessionStorage.getItem('cine_previa_eventos') || 'null'); } catch (_) { return null; }
+}
+function guardarPrevia(d) { try { sessionStorage.setItem('cine_previa_eventos', JSON.stringify(d)); } catch (_) { /* tudo bem */ } }
+export function limparEventos() { cache = null; quando = 0; try { sessionStorage.removeItem('cine_previa_eventos'); } catch (_) { /* tudo bem */ } }
 
 /** "Ativo" = rolando agora ou começando nos próximos 7 dias (sem cancelados). */
 export function eventoAtivo(e) {

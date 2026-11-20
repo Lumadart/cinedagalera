@@ -50,23 +50,31 @@ export function cartaoTitulo(t, { aoMudar, nota = null }) {
     botao.setAttribute('aria-expanded', 'true');
     menu.querySelector('button').focus();
   }
-  async function definir(st) {
+  /** Atualiza a tela na hora e confirma no servidor em segundo plano; se falhar, volta ao que era. */
+  async function trocarStatus(aplicar, mensagem) {
     fecharMenus();
+    const atual = estado.catalogo.status.find((x) => x.titulo_id === t.id && x.membro_id === estado.membro.id);
+    const antes = atual ? { ...atual } : null;
+    aplicar(); aoMudar();
+    return { antes, mensagem };
+  }
+  function desfazer(antes) {
+    if (antes) aplicarStatusLocal(estado.membro.id, t.id, antes); else removerStatusLocal(estado.membro.id, t.id);
+    aoMudar();
+  }
+  async function definir(st) {
+    const { antes } = await trocarStatus(() => aplicarStatusLocal(estado.membro.id, t.id, { status: st, visto_em: st === 'visto' ? new Date().toISOString() : '' }));
     try {
       await chamar('marcar_status', { titulo_id: t.id, status: st });
-      aplicarStatusLocal(estado.membro.id, t.id, { status: st, visto_em: st === 'visto' ? new Date().toISOString() : '' });
       avisar(`“${t.nome}” marcado como ${ROTULOS[st].toLowerCase()}.`);
-      aoMudar();
-    } catch (e) { avisar(e.message, 'erro'); }
+    } catch (e) { desfazer(antes); avisar(e.message, 'erro'); }
   }
   async function remover() {
-    fecharMenus();
+    const { antes } = await trocarStatus(() => removerStatusLocal(estado.membro.id, t.id));
     try {
       await chamar('remover_status', { titulo_id: t.id });
-      removerStatusLocal(estado.membro.id, t.id);
       avisar(`“${t.nome}” saiu da sua lista.`);
-      aoMudar();
-    } catch (e) { avisar(e.message, 'erro'); }
+    } catch (e) { desfazer(antes); avisar(e.message, 'erro'); }
   }
 
   return h('article', { class: 'cartao' }, capaBox);

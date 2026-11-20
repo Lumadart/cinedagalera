@@ -145,49 +145,33 @@ function buscaTopo(aoBuscar) {
   }, h('span', { class: 'icone-busca' }, icone('busca', 18)), campo);
 }
 
-/** Espaço no fim do menu para uma imagem do grupo (coloque o arquivo em img/menu.png). */
-function menuImagem() {
-  const caixa = h('div', { class: 'menu-imagem' });
-  const img = h('img', { src: 'img/menu.png', alt: '' });
-  img.addEventListener('error', () => { caixa.remove(); }); // sem imagem, o espaço fica vazio
-  caixa.append(img);
-  return caixa;
-}
-
-/** A moldura de todas as telas internas: menu lateral, topo e rodapé. */
+/** A moldura de todas as telas internas: barra superior (marca, menu, busca, perfil) e rodapé. */
 export function casca(rota, conteudo, { aoBuscar = null } = {}) {
-  const item = (id, href, texto, ico) =>
-    h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, icone(ico, 20), h('span', null, texto));
+  const item = (id, href, texto) => h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, texto);
   const m = estado.membro;
 
   return h('div', { class: 'casca' },
-    h('aside', { class: 'menu' },
+    h('header', { class: 'barra-topo' },
       h('a', { class: 'marca', href: '#/' }, marcaLogo(), h('span', null, NOME_DO_GRUPO)),
       h('nav', { class: 'nav', 'aria-label': 'Principal' },
-        item('inicio', '#/', 'Início', 'inicio'),
-        item('catalogo', '#/catalogo', 'Catálogo', 'grade'),
-        item('adicionar', '#/adicionar', 'Adicionar título', 'mais'),
-        item('perfil', '#/perfil', 'Meu perfil', 'marcador'),
-        item('amigos', '#/amigos', 'Amigos', 'amigos'),
-        item('eventos', '#/eventos', 'Eventos', 'calendario'),
-        item('sorteio', '#/sorteio', 'Sorteio', 'dado'),
-        m && m.admin ? item('admin', '#/admin', 'Administração', 'escudo') : null
+        item('inicio', '#/', 'Início'),
+        item('catalogo', '#/catalogo', 'Catálogo'),
+        item('eventos', '#/eventos', 'Eventos'),
+        item('sorteio', '#/sorteio', 'Sorteio'),
+        item('amigos', '#/amigos', 'Amigos'),
+        item('adicionar', '#/adicionar', 'Adicionar'),
+        m && m.admin ? item('admin', '#/admin', 'Admin') : null
       ),
-      menuImagem()
+      buscaTopo(aoBuscar),
+      h('div', { class: 'usuario' },
+        h('a', { class: 'usuario-link', href: '#/perfil', 'aria-label': 'Meu perfil', 'aria-current': rota === 'perfil' ? 'page' : null }, h('span', { class: 'usuario-nome' }, m.nome), avatar(m, { tamanho: 40 })),
+        h('button', { type: 'button', class: 'btn-sair', onclick: sair, 'aria-label': 'Sair da conta', title: 'Sair da conta' }, icone('sair', 18)))
     ),
-    h('div', { class: 'principal' },
-      h('header', { class: 'topo' },
-        buscaTopo(aoBuscar),
-        h('div', { class: 'usuario' },
-          h('a', { class: 'usuario-link', href: '#/perfil', 'aria-label': 'Meu perfil' }, h('span', { class: 'usuario-nome' }, m.nome), avatar(m, { tamanho: 40 })),
-          h('button', { type: 'button', class: 'btn-sair', onclick: sair, 'aria-label': 'Sair da conta', title: 'Sair da conta' }, icone('sair', 18)))
-      ),
-      h('main', { id: 'conteudo', class: 'conteudo', tabindex: '-1' }, conteudo),
-      h('footer', { class: 'rodape-pagina' },
-        'Dados e imagens dos títulos: ',
-        h('a', { href: 'https://www.themoviedb.org', target: '_blank', rel: 'noopener noreferrer' }, 'TMDB'),
-        '. Este site usa a API do TMDB, mas não é endossado nem certificado por ele.'
-      )
+    h('main', { id: 'conteudo', class: 'conteudo', tabindex: '-1' }, conteudo),
+    h('footer', { class: 'rodape-pagina' },
+      'Dados e imagens dos títulos: ',
+      h('a', { href: 'https://www.themoviedb.org', target: '_blank', rel: 'noopener noreferrer' }, 'TMDB'),
+      '. Este site usa a API do TMDB, mas não é endossado nem certificado por ele.'
     )
   );
 }

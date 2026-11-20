@@ -55,3 +55,13 @@ export function painelBadges(lista) {
       h('h3', null, c),
       h('div', { class: 'badges-grade' }, lista.filter((b) => b.categoria === c).map(cartaoBadge)))));
 }
+
+/** Só as conquistadas (para o perfil): medalha + nome + nível. */
+export function conquistadasGrade(lista) {
+  const tem = lista.filter((b) => b.nivel > 0);
+  if (!tem.length) return h('p', { class: 'suave' }, 'Ainda sem conquistas.');
+  return h('div', { class: 'conquistas-grade' }, tem.map((b) => h('div', { class: 'conquista', title: b.descricao },
+    medalha(b, 64),
+    h('strong', null, b.nome),
+    b.tipo === 'niveis' ? h('small', { class: 'nivel nivel-' + b.nivel }, NIVEIS[b.nivel]) : h('small', { class: 'suave' }, b.concedida ? 'Concedida' : 'Conquista'))));
+}

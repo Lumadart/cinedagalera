@@ -59,8 +59,11 @@ export function telaInicio({ raiz, ativa }) {
     const quem = Object.fromEntries(membros.map((m) => [m.id, m]));
     const recentes = titulos.slice().sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     montar(conteudo,
-      h('div', { class: 'inicio-principal' }, bannerEvento, hero(recentes.slice(0, 5), quem), ultimos(recentes), queridos(titulos)),
-      h('aside', { class: 'inicio-lateral' }, assistindo(porId), minhaLista(porId), atividade(titulos, status, porId, quem))
+      hero(recentes.slice(0, 5), quem),
+      h('div', { class: 'inicio-corpo' },
+        h('div', { class: 'inicio-principal' }, bannerEvento, ultimos(recentes), queridos(titulos)),
+        h('aside', { class: 'inicio-lateral' }, atividade(titulos, status, porId, quem))
+      )
     );
   }
 
@@ -127,7 +130,7 @@ export function telaInicio({ raiz, ativa }) {
     return h('section', { class: 'bloco-home' },
       h('div', { class: 'titulo-secao' },
         h('h2', null, h('span', { class: 'ico-ouro' }, icone(icone_, 20)), titulo),
-        h('a', { href: '#/catalogo' }, 'Ver catálogo →')),
+        h('a', { href: '#/catalogo' }, 'Ver todos')),
       lista.length ? h('div', { class: 'grade' }, lista.map((t) => cartaoTitulo(t, { aoMudar: desenhar }))) : h('p', { class: 'suave' }, vazio));
   }
 
@@ -142,41 +145,18 @@ export function telaInicio({ raiz, ativa }) {
     return secao('coracao', 'Mais querem ver', lista, 'Ninguém marcou “quero ver” ainda.');
   }
 
-  function assistindo(porId) {
-    const meus = estado.catalogo.status
-      .filter((s) => s.membro_id === estado.membro.id && s.status === 'assistindo' && porId[s.titulo_id])
-      .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em))).slice(0, 3);
-    if (!meus.length) return null;   // nada em andamento: o card nem aparece
-    return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('play', 20)), 'Está assistindo'), h('a', { href: '#/perfil' }, 'Ver todos →')),
-      h('ul', { class: 'mini-lista' }, meus.map((s) => {
-        const t = porId[s.titulo_id];
-        const prog = t.tipo === 'serie' && s.temporada_atual && s.episodio_atual ? `T${s.temporada_atual} · Ep. ${s.episodio_atual}` : rotuloCategoria(t);
-        return h('li', null, h('a', { href: '#/titulo/' + t.id }, h('span', { class: 'mini-capa' }, capa(t)), h('span', null, h('strong', null, t.nome), h('small', null, prog))));
-      })));
-  }
-
   function atividade(titulos, status, porId, quem) {
     const eventos = [];
     status.forEach((s) => { if (s.atualizado_em && quem[s.membro_id] && porId[s.titulo_id]) eventos.push({ quando: s.atualizado_em, m: quem[s.membro_id], t: porId[s.titulo_id], txt: VERBO[s.status], cor: COR_STATUS[s.status] }); });
     titulos.forEach((t) => { if (t.criado_em && quem[t.adicionado_por]) eventos.push({ quando: t.criado_em, m: quem[t.adicionado_por], t, txt: 'indicou', cor: 'var(--ouro)' }); });
     eventos.sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
     return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('raio', 20)), 'Atividade recente')),
-      eventos.length ? h('ul', { class: 'atividade' }, eventos.slice(0, 5).map((e) =>
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('raio', 20)), 'Atividade da galera')),
+      eventos.length ? h('ul', { class: 'atividade' }, eventos.slice(0, 8).map((e) =>
         h('li', null, avatar(e.m, { tamanho: 36, cor: e.cor }),
           h('div', { class: 'at-texto' }, h('span', null, h('strong', null, e.m.nome.split(' ')[0]), ' ' + e.txt + ' ', h('a', { href: '#/titulo/' + e.t.id }, e.t.nome)),
-            h('span', { class: 'suave pequeno' }, haQuanto(e.quando))))))
+            h('span', { class: 'suave pequeno' }, haQuanto(e.quando))),
+          h('a', { class: 'at-capa', href: '#/titulo/' + e.t.id, 'aria-label': e.t.nome, tabindex: '-1' }, capa(e.t)))))
         : h('p', { class: 'suave' }, 'Quando a galera marcar títulos, a atividade aparece aqui.'));
-  }
-
-  function minhaLista(porId) {
-    const meus = estado.catalogo.status.filter((s) => s.membro_id === estado.membro.id && s.status === 'quero_ver' && porId[s.titulo_id])
-      .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em))).slice(0, 3);
-    return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('marcador', 20)), 'Quero ver'), h('a', { href: '#/perfil' }, 'Ver todos →')),
-      meus.length ? h('ul', { class: 'mini-lista' }, meus.map((s) => { const t = porId[s.titulo_id];
-        return h('li', null, h('a', { href: '#/titulo/' + t.id }, h('span', { class: 'mini-capa' }, capa(t)), h('span', null, h('strong', null, t.nome), h('small', null, rotuloCategoria(t) + (t.ano ? ' · ' + t.ano : ''))))); }))
-        : h('p', { class: 'suave' }, 'Use o “+” nos títulos para montar sua lista.'));
   }
 }
