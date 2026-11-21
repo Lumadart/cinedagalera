@@ -53,8 +53,12 @@ export function quemVai(e, membros, resposta, max = 8) {
 /** Programação do evento: filmes ordenados por horário (sem horário vão para o fim). */
 export function programacao(e) {
   return e.titulos.map((id) => ({ titulo_id: id, inicio: (e.horarios || {})[id] || '' }))
-    .sort((a, b) => (a.inicio || '~').localeCompare(b.inicio || '~'));
+    .sort((a, b) => (a.inicio && b.inicio ? a.inicio.localeCompare(b.inicio) : a.inicio ? -1 : b.inicio ? 1 : 0));
 }
+
+/** "sábado, 24 de maio" e "14:00" (só o dia ou só a hora, ao contrário de dataLonga/horaCurta que trazem os dois). */
+export const diaLongo = (iso) => new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+export const hhmm = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
 /** Contagem regressiva ao vivo (dias, horas, minutos, segundos). Para sozinha quando a tela sai ou o evento começa. */
 export function relogio(iso, ativa) {

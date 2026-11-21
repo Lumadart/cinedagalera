@@ -13,6 +13,7 @@ import { telaEditarPerfil } from './telas/editar-perfil.js';
 import { telaAmigos } from './telas/amigos.js';
 import { telaAdmin } from './telas/admin.js';
 import { telaEventos } from './telas/eventos.js';
+import { telaEvento } from './telas/evento.js';
 import { telaSorteio } from './telas/sorteio.js';
 
 const raiz = document.getElementById('app');
@@ -29,14 +30,15 @@ function rotaAtual() {
   if (partes[0] === 'catalogo') return { nome: 'catalogo' };
   if (partes[0] === 'adicionar') return { nome: 'adicionar' };
   if (partes[0] === 'eventos') return { nome: 'eventos' };
+  if (partes[0] === 'evento' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'evento', id: partes[1] };
   if (partes[0] === 'sorteio') return { nome: 'sorteio' };
   if (partes[0] === 'admin') return { nome: 'admin' };
   if (partes[0] === 'titulo' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'titulo', id: partes[1] };
   return { nome: 'inicio' };
 }
 
-const TELAS = { perfil: telaPerfil, editar: telaEditarPerfil, amigos: telaAmigos, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo, adicionar: telaAdicionar, admin: telaAdmin, eventos: telaEventos, sorteio: telaSorteio };
-const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', sorteio: 'Sorteio' };
+const TELAS = { perfil: telaPerfil, editar: telaEditarPerfil, amigos: telaAmigos, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo, adicionar: telaAdicionar, admin: telaAdmin, eventos: telaEventos, evento: telaEvento, sorteio: telaSorteio };
+const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', evento: 'Evento', sorteio: 'Sorteio' };
 
 function rotear() {
   const rota = rotaAtual();
