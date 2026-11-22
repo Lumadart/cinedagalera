@@ -4,6 +4,7 @@ import { estado } from '../estado.js';
 import { guardarToken } from '../sessao.js';
 import { NOME_DO_GRUPO } from '../config.js';
 import { marcaLogo } from '../ui.js';
+import { fundoAparencia } from '../aparencia.js';
 
 /** Campo com ícone à esquerda (e, opcionalmente, um botão à direita, como o olhinho do PIN). */
 function campo(ico, input, direita = null) {
@@ -22,9 +23,8 @@ export function telaLogin({ raiz, params }) {
   let codigoDigitado = (params && params.convite) || '';
 
   function desenhar() {
-    // A imagem da esquerda é opcional: coloque img/login.jpg (veja img/LEIA-ME.txt). Sem ela, fica o degradê.
-    const arte = h('img', { class: 'login-foto', src: 'img/login.jpg', alt: '' });
-    arte.addEventListener('error', () => arte.remove());
+    // A imagem da esquerda é escolhida no Admin > Aparência. Sem ela, fica o degradê.
+    const arte = fundoAparencia(h('div', { class: 'login-foto', 'aria-hidden': 'true' }), 'login');
     montar(raiz, h('div', { class: 'login' },
       h('section', { class: 'login-marca' },
         arte,

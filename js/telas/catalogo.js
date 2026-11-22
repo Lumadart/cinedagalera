@@ -3,6 +3,7 @@ import { estado, carregarCatalogo } from '../estado.js';
 import { cartaoTitulo, fecharMenus } from '../cartao.js';
 import { casca, esqueleto, avisar, ROTULOS, COR_STATUS, normalizar, CATEGORIAS } from '../ui.js';
 import { dropdown } from '../dropdown.js';
+import { fundoAparencia } from '../aparencia.js';
 
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
@@ -18,7 +19,7 @@ const TEXTO_CAT = {
   reality: 'Competição, convivência e muita resenha.',
   documentario: 'Histórias reais que valem o tempo.'
 };
-// Imagens de fundo do hero: coloque img/catalogo/<tipo>.jpg (veja o LEIA-ME.txt da pasta). Se faltar, fica só o degradê.
+// Imagens de fundo do hero: escolhidas no Admin > Aparência. Sem imagem, fica só o degradê.
 const TIPOS_HERO = ['todos', 'filme', 'serie', 'anime', 'dorama', 'reality', 'documentario'];
 
 export function telaCatalogo({ raiz, ativa }) {
@@ -32,7 +33,7 @@ export function telaCatalogo({ raiz, ativa }) {
     aoMudar: (e) => { filtro.ordem = e.target.value; desenharGrade(); }
   });
 
-  const fundos = TIPOS_HERO.map((c) => h('div', { class: 'cat-fundo', 'data-c': c, style: { backgroundImage: `url("img/catalogo/${c}.jpg")` } }));
+  const fundos = TIPOS_HERO.map((c) => fundoAparencia(h('div', { class: 'cat-fundo', 'data-c': c }), 'catalogo_' + c));
   const heroTitulo = h('h1');
   const heroTexto = h('p', { class: 'cat-desc' });
   const heroContagem = h('span', { class: 'cat-contagem' });

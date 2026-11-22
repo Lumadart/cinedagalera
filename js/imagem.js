@@ -2,7 +2,7 @@ import { h } from './dom.js';
 
 // Abre a imagem escolhida e deixa a pessoa enquadrar (arrastar e dar zoom) antes de enviar.
 // Devolve um JPEG já recortado e reduzido no tamanho final, ou null se ela cancelar.
-export async function ajustarImagem(arquivo, largura, altura, { circulo = false, titulo = 'Ajustar imagem' } = {}) {
+export async function ajustarImagem(arquivo, largura, altura, { circulo = false, titulo = 'Ajustar imagem', qualidade = 0.92 } = {}) {
   if (!arquivo || !/^image\/(jpeg|png|webp)$/.test(arquivo.type)) throw new Error('Use uma imagem JPG, PNG ou WebP.');
   if (arquivo.size > 15 * 1024 * 1024) throw new Error('Essa imagem é grande demais. Escolha uma de até 15 MB.');
   let origem;
@@ -65,7 +65,7 @@ export async function ajustarImagem(arquivo, largura, altura, { circulo = false,
       const c = saida.getContext('2d');
       c.fillStyle = '#231b20'; c.fillRect(0, 0, largura, altura);
       c.drawImage(origem, largura / 2 - cx * sc, altura / 2 - cy * sc, iw * sc, ih * sc);
-      fechar(saida.toDataURL('image/jpeg', 0.92));
+      fechar(saida.toDataURL('image/jpeg', qualidade));
     };
     const teclas = (e) => { if (e.key === 'Escape') fechar(null); };
     document.addEventListener('keydown', teclas);

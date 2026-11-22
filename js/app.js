@@ -3,18 +3,12 @@ import { estado, carregarCatalogo, limparCatalogo } from './estado.js';
 import { lerToken } from './sessao.js';
 import { h, montar } from './dom.js';
 import { avisar } from './ui.js';
+import { carregarAparencia } from './aparencia.js';
 import { telaLogin } from './telas/login.js';
 import { telaInicio } from './telas/inicio.js';
 import { telaCatalogo } from './telas/catalogo.js';
 import { telaTitulo } from './telas/titulo.js';
-import { telaAdicionar } from './telas/adicionar.js';
 import { telaPerfil } from './telas/perfil.js';
-import { telaEditarPerfil } from './telas/editar-perfil.js';
-import { telaAmigos } from './telas/amigos.js';
-import { telaAdmin } from './telas/admin.js';
-import { telaEventos } from './telas/eventos.js';
-import { telaEvento } from './telas/evento.js';
-import { telaSorteio } from './telas/sorteio.js';
 
 const raiz = document.getElementById('app');
 let versao = 0; // cada troca de tela invalida respostas atrasadas da tela anterior
@@ -37,10 +31,20 @@ function rotaAtual() {
   return { nome: 'inicio' };
 }
 
-const TELAS = { perfil: telaPerfil, editar: telaEditarPerfil, amigos: telaAmigos, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo, adicionar: telaAdicionar, admin: telaAdmin, eventos: telaEventos, evento: telaEvento, sorteio: telaSorteio };
+// Telas usadas com menos frequência só são baixadas quando alguém abre (a primeira abertura é mais rápida).
+const SOB_DEMANDA = {
+  editar: () => import('./telas/editar-perfil.js').then((m) => m.telaEditarPerfil),
+  amigos: () => import('./telas/amigos.js').then((m) => m.telaAmigos),
+  admin: () => import('./telas/admin.js').then((m) => m.telaAdmin),
+  eventos: () => import('./telas/eventos.js').then((m) => m.telaEventos),
+  evento: () => import('./telas/evento.js').then((m) => m.telaEvento),
+  sorteio: () => import('./telas/sorteio.js').then((m) => m.telaSorteio),
+  adicionar: () => import('./telas/adicionar.js').then((m) => m.telaAdicionar)
+};
+const TELAS = { perfil: telaPerfil, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo };
 const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', evento: 'Evento', sorteio: 'Sorteio' };
 
-function rotear() {
+async function rotear() {
   const rota = rotaAtual();
   if (!estado.membro && rota.nome !== 'entrar') { location.replace('#/entrar'); return; }
   if (estado.membro && rota.nome === 'entrar') { location.replace('#/'); return; }
@@ -48,7 +52,18 @@ function rotear() {
   const minha = ++versao;
   document.title = TITULOS[rota.nome] + ' · Cine Arkham';
   window.scrollTo(0, 0);
-  TELAS[rota.nome]({ raiz, params: rota, ativa: () => minha === versao });
+  let tela = TELAS[rota.nome];
+  if (!tela) {
+    try { tela = TELAS[rota.nome] = await SOB_DEMANDA[rota.nome](); }
+    catch (_) {
+      if (minha !== versao) return;
+      montar(raiz, h('div', { class: 'estado-vazio tela-cheia' }, h('p', { class: 'erro' }, 'Não foi possível carregar esta página. Verifique a internet.'),
+        h('button', { type: 'button', class: 'btn-primario', onclick: () => location.reload() }, 'Tentar de novo')));
+      return;
+    }
+    if (minha !== versao) return; // a pessoa já foi para outra tela enquanto baixava
+  }
+  tela({ raiz, params: rota, ativa: () => minha === versao });
   const principal = document.getElementById('conteudo');
   if (principal) principal.focus({ preventScroll: true });
 }
@@ -75,6 +90,7 @@ function esconderSplash() {
 }
 
 async function iniciar() {
+  carregarAparencia(); // imagens dos heros: pública, vai em paralelo com o resto
   if (lerToken()) {
     try {
       carregarCatalogo().catch(() => {}); // em paralelo com o "eu", para a primeira tela chegar mais rápido

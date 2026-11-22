@@ -3,6 +3,7 @@ import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
 import { casca, capa, avisar, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria, formatarNota } from '../ui.js';
 import { dropdown } from '../dropdown.js';
+import { fundoAparencia } from '../aparencia.js';
 
 export function telaAdicionar({ raiz, ativa }) {
   const campo = h('input', {
@@ -111,13 +112,13 @@ export function telaAdicionar({ raiz, ativa }) {
 
   desenharChips();
   montar(raiz, casca('adicionar', h('div', { class: 'adicionar' },
-    h('header', { class: 'add-hero' },
+    fundoAparencia(h('header', { class: 'add-hero' },
       h('div', { class: 'add-hero-texto' },
         h('span', { class: 'add-sobre' }, icone('novo', 16), 'Novo no catálogo'),
         h('h1', null, 'Adicionar título'),
         h('p', null, 'Busque um filme, série, anime ou dorama e coloque no catálogo da galera.'),
         h('div', { class: 'add-busca' }, icone('busca', 22), form),
-        chipsEl)),
+        chipsEl)), 'adicionar'),
     saida, ocioso)));
   desenharOcioso();
   campo.focus();

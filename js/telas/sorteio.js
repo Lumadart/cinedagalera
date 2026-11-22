@@ -2,6 +2,7 @@ import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
 import { dropdown } from '../dropdown.js';
+import { fundoAparencia } from '../aparencia.js';
 import { casca, esqueleto, capa, avisar, seguro, CATEGORIAS, rotuloCategoria } from '../ui.js';
 
 // O que a pessoa escolheu fica guardado enquanto o site estiver aberto.
@@ -52,11 +53,11 @@ export function telaSorteio({ raiz, ativa }) {
   const resultado = h('section', { class: 'sorteio-res', hidden: true, 'aria-live': 'polite' });
 
   montar(raiz, casca('sorteio', h('div', { class: 'sorteio' },
-    h('header', { class: 'sorteio-hero' },
+    fundoAparencia(h('header', { class: 'sorteio-hero' },
       h('div', { class: 'sorteio-hero-texto' },
         h('h1', null, 'SORTEIO', h('span', { class: 'ouro' }, 'ALEATÓRIO')),
         h('p', { class: 'sorteio-lead' }, 'Não sabe o que assistir? Deixe o destino escolher!'),
-        h('p', { class: 'suave' }, 'Sorteamos um título aleatório entre o nosso catálogo ou do TMDB. Use os filtros para refinar e descobrir algo novo!'))),
+        h('p', { class: 'suave' }, 'Sorteamos um título aleatório entre o nosso catálogo ou do TMDB. Use os filtros para refinar e descobrir algo novo!'))), 'sorteio'),
     painel, resultado)));
 
   // ---------- dados do TMDB ----------

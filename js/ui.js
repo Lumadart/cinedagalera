@@ -68,7 +68,7 @@ export function avatar(membro, { tamanho = 36, cor = null, dica = null } = {}) {
   }, iniciais(membro.nome));
   const foto = seguro(membro.avatar_url);
   if (foto) {
-    const img = h('img', { src: foto, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+    const img = h('img', { src: foto, alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' });
     img.addEventListener('error', () => img.remove());
     el.append(img);
   }
@@ -79,7 +79,7 @@ export function avatar(membro, { tamanho = 36, cor = null, dica = null } = {}) {
 export function fundoImg(titulo, classe = 'fundo-img') {
   const src = seguro(tmdbTamanho(titulo.fundo_url, 'w1280')) || seguro(titulo.capa_url);
   if (!src) return null;
-  return suave(h('img', { class: classe, src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }));
+  return suave(h('img', { class: classe, src, alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' }));
 }
 
 /** Troca o tamanho de uma imagem do TMDB (w500 → w780, w780 → w1280...). Outras origens ficam como estão. */
@@ -92,7 +92,7 @@ export function capa(titulo, grande = false) {
   const el = h('div', { class: 'capa' });
   const foto = seguro(grande ? tmdbTamanho(titulo.capa_url, 'w780') : titulo.capa_url);
   if (foto) {
-    const img = h('img', { src: foto, alt: 'Capa de ' + titulo.nome, loading: 'lazy', referrerpolicy: 'no-referrer' });
+    const img = h('img', { src: foto, alt: 'Capa de ' + titulo.nome, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' });
     suave(img);
     img.addEventListener('error', () => { img.remove(); el.classList.add('sem-imagem'); el.append(titulo.nome); });
     el.append(img);

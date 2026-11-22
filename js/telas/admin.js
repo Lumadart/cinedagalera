@@ -7,6 +7,7 @@ import { abaTitulos } from './admin/titulos.js';
 import { abaEventos } from './admin/eventos.js';
 import { abaConquistas } from './admin/conquistas.js';
 import { abaManutencao } from './admin/manutencao.js';
+import { abaAparencia } from './admin/aparencia.js';
 
 const ABAS = [
   ['membros', 'Membros', abaMembros],
@@ -14,6 +15,7 @@ const ABAS = [
   ['titulos', 'Títulos', abaTitulos],
   ['eventos', 'Eventos', abaEventos],
   ['conquistas', 'Conquistas', abaConquistas],
+  ['aparencia', 'Aparência', abaAparencia],
   ['manutencao', 'Manutenção e histórico', abaManutencao]
 ];
 
