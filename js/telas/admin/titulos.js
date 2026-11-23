@@ -54,7 +54,7 @@ export async function abaTitulos({ painel, ativa }, busca = '') {
   };
   campo.addEventListener('input', pintar);
   montar(painel,
-    h('p', { class: 'suave' }, 'Corrija dados vindos do TMDB ou remova indicações erradas. Para mudar a categoria ou o recado, abra o título.'),
+    
     campo, lista);
   pintar();
 }

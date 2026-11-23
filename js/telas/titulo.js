@@ -41,9 +41,10 @@ export function telaTitulo({ raiz, ativa, params }) {
 
     // ----- hero: tudo o que sabemos do título, escrito ali mesmo -----
     const linhaFicha = (rotulo, conteudoDd) => {
-      const dd = h('dd', null, conteudoDd || '');
-      const linha = h('div', { class: 'ficha-linha', hidden: !conteudoDd }, h('dt', null, rotulo + ':'), dd);
-      return { linha, preencher: (texto) => { if (!texto) return; dd.textContent = texto; linha.hidden = false; } };
+      // Sem texto ainda = esqueleto (mantém o espaço reservado e evita a página "pular" quando a ficha chega).
+      const dd = h('dd', { class: conteudoDd ? '' : 'sk-texto' }, conteudoDd || '');
+      const linha = h('div', { class: 'ficha-linha' }, h('dt', null, rotulo + ':'), dd);
+      return { linha, preencher: (texto) => { if (!texto) { linha.hidden = true; return; } dd.className = ''; dd.textContent = texto; } };
     };
     const fDirecao = linhaFicha(t.tipo === 'filme' ? 'Direção' : 'Criação');
     const fRoteiro = linhaFicha('Roteiro');
@@ -51,7 +52,8 @@ export function telaTitulo({ raiz, ativa, params }) {
     const fProducao = linhaFicha('Distribuição');
     const generosLinha = t.generos.length ? h('div', { class: 'ficha-linha' }, h('dt', null, 'Gêneros:'),
       h('dd', { class: 'generos-links' }, t.generos.map((g, i) => [i ? ', ' : '', h('a', { href: '#/catalogo', onclick: () => { estado.filtro.categoria = 'todos'; estado.filtro.genero = g; estado.filtro.busca = ''; } }, g)]))) : null;
-    const trailerSlot = h('span', { class: 'trailer-slot' });
+    const trailerSlot = h('span', { class: 'trailer-slot' }, h('span', { class: 'sk-botao' }));
+    const acoes = h('div', { class: 'tit-acoes carregando' }, trailerSlot);
     const classifSlot = h('div', { class: 'tit-classif', hidden: true });
     const votosTmdb = h('span', { class: 'suave pequeno' });
     const exibSlot = h('p', { class: 'tit-exibido', hidden: true });
@@ -73,9 +75,13 @@ export function telaTitulo({ raiz, ativa, params }) {
         classifSlot.textContent = f.classificacao;
         classifSlot.hidden = false;
       }
+      trailerSlot.textContent = ''; acoes.classList.remove('carregando');
       if (d.trailer) trailerSlot.append(h('button', { type: 'button', class: 'btn-primario', onclick: () => abrirTrailer(d.trailer) }, icone('play', 16), 'Trailer'));
       if (d.votos) votosTmdb.textContent = `(${d.votos.toLocaleString('pt-BR')} votos)`;
-    }).catch(() => { /* a ficha é um bônus */ });
+    }).catch(() => { /* a ficha é um bônus: some o esqueleto */
+      [fDirecao, fRoteiro, fElenco, fProducao].forEach((f) => f.preencher(''));
+      trailerSlot.textContent = ''; acoes.classList.remove('carregando');
+    });
 
     // Marcação rápida de status (faixa de avaliação). Clicar de novo no status ligado tira a marcação.
     const rapido = (st) => h('button', { type: 'button', class: 'btn-status-rapido' + (meu && meu.status === st ? ' ligado' : ''), style: { '--cor': COR_STATUS[st] },
@@ -103,9 +109,10 @@ export function telaTitulo({ raiz, ativa, params }) {
         h('div', { class: 'tit-topo' },
           h('div', { class: 'tit-capa' }, capa(t, true)),
           h('div', { class: 'tit-info' },
-            h('h1', null, t.nome, alternativos(t)),
+            h('h1', null, t.nome),
+            alternativos(t),
             h('p', { class: 'tit-meta' }, ...metaLinha(t, votosTmdb)),
-            h('div', { class: 'tit-acoes' }, trailerSlot),
+            acoes,
             sinopse(t),
             h('dl', { class: 'tit-ficha' }, fDirecao.linha, fRoteiro.linha, fElenco.linha, generosLinha, fProducao.linha)
           )
@@ -156,7 +163,7 @@ export function telaTitulo({ raiz, ativa, params }) {
       vistos.add(k); return true;
     }).slice(0, 2);
     if (!nomes.length) return null;
-    return h('span', { class: 'tit-ou' }, nomes.map((n) => [' ', h('span', { class: 'ou' }, 'ou'), ' ', h('span', { class: 'alt' }, n)]));
+    return h('p', { class: 'tit-alt' }, nomes.map((n, i) => [i ? ' ' : '', h('span', { class: 'ou' }, 'ou'), ' ', h('span', { class: 'alt' }, n)]));
   }
 
   /** Ano • duração • ★ nota (votos): a nota do TMDB vai na mesma linha e abre o título lá. */
