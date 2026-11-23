@@ -82,6 +82,13 @@ export function fundoImg(titulo, classe = 'fundo-img') {
   return suave(h('img', { class: classe, src, alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer' }));
 }
 
+/** "2h05min" (filme) ou "3 temporadas" (série): o que vem depois do ano em "Ano • Duração". */
+export function duracaoTitulo(t) {
+  if (t.tipo === 'filme' && t.duracao_min) return `${Math.floor(t.duracao_min / 60)}h${String(t.duracao_min % 60).padStart(2, '0')}min`;
+  if (t.tipo === 'serie' && t.temporadas) return `${t.temporadas} ${t.temporadas === 1 ? 'temporada' : 'temporadas'}`;
+  return '';
+}
+
 /** Troca o tamanho de uma imagem do TMDB (w500 → w780, w780 → w1280...). Outras origens ficam como estão. */
 export function tmdbTamanho(url, tamanho) {
   return typeof url === 'string' ? url.replace(/(image\.tmdb\.org\/t\/p\/)w\d+/, '$1' + tamanho) : url;

@@ -1,10 +1,10 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, achaTitulo, statusDe, aplicarStatusLocal, removerStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, rotuloCategoria } from '../ui.js';
+import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, duracaoTitulo } from '../ui.js';
 import { dropdown } from '../dropdown.js';
 import { carregarEventos, exibicaoDe } from '../eventos.js';
-import { detalhesTmdb, abrirTrailer, linkTmdb, linhasDaFicha } from '../extras-titulo.js';
+import { detalhesTmdb, abrirTrailer, linkTmdb, dadosDaFicha } from '../extras-titulo.js';
 
 export function telaTitulo({ raiz, ativa, params }) {
   if (estado.catalogo) {
@@ -36,81 +36,94 @@ export function telaTitulo({ raiz, ativa, params }) {
     const notas = linhas.filter((s) => s.status !== 'quero_ver' && s.nota !== null).map((s) => s.nota);
     const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
 
-    const detalhes = [];
-    if (t.tipo === 'filme' && t.duracao_min) detalhes.push(`${Math.floor(t.duracao_min / 60)}h${String(t.duracao_min % 60).padStart(2, '0')}min`);
-    if (t.tipo === 'serie' && t.temporadas) detalhes.push(`${t.temporadas} ${t.temporadas === 1 ? 'temporada' : 'temporadas'}`);
-    if (t.tipo === 'serie' && t.episodios) detalhes.push(`${t.episodios} episódios`);
-
     const contagem = { visto: 0, assistindo: 0, quero_ver: 0, abandonado: 0 };
     linhas.forEach((s) => { contagem[s.status] += 1; });
 
     // ----- hero: tudo o que sabemos do título, escrito ali mesmo -----
-    const ficha = h('dl', { class: 'tit-ficha', hidden: true });
+    const linhaFicha = (rotulo, conteudoDd) => {
+      const dd = h('dd', null, conteudoDd || '');
+      const linha = h('div', { class: 'ficha-linha', hidden: !conteudoDd }, h('dt', null, rotulo + ':'), dd);
+      return { linha, preencher: (texto) => { if (!texto) return; dd.textContent = texto; linha.hidden = false; } };
+    };
+    const fDirecao = linhaFicha(t.tipo === 'filme' ? 'Direção' : 'Criação');
+    const fRoteiro = linhaFicha('Roteiro');
+    const fElenco = linhaFicha('Elenco');
+    const fProducao = linhaFicha('Distribuição');
+    const generosLinha = t.generos.length ? h('div', { class: 'ficha-linha' }, h('dt', null, 'Gêneros:'),
+      h('dd', { class: 'generos-links' }, t.generos.map((g, i) => [i ? ', ' : '', h('a', { href: '#/catalogo', onclick: () => { estado.filtro.categoria = 'todos'; estado.filtro.genero = g; estado.filtro.busca = ''; } }, g)]))) : null;
     const trailerSlot = h('span', { class: 'trailer-slot' });
+    const classifSlot = h('div', { class: 'tit-classif', hidden: true });
     const votosTmdb = h('span', { class: 'suave pequeno' });
     const exibSlot = h('p', { class: 'tit-exibido', hidden: true });
     carregarEventos().then((d) => {
       if (!ativa()) return;
       const x = exibicaoDe(d.eventos, t.id);
       if (!x) return;
-      const quando = new Date(x.quando).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-      exibSlot.append(icone('check', 16), ' Já exibido para a galera em ' + quando + ' · ', h('a', { href: '#/evento/' + x.evento_id }, x.evento));
+      const quando = new Date(x.quando).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      exibSlot.append(icone('check', 16), 'Exibido em: ', h('a', { href: '#/evento/' + x.evento_id, title: x.evento }, quando));
       exibSlot.hidden = false;
     }).catch(() => { /* informação extra */ });
     detalhesTmdb(t).then((d) => {
       if (!ativa()) return;
-      const linhas = linhasDaFicha(d, t);
-      if (linhas.length) { ficha.append(...linhas); ficha.hidden = false; }
-      if (d.trailer) trailerSlot.append(h('button', { type: 'button', class: 'btn-contorno', onclick: () => abrirTrailer(d.trailer) }, icone('play', 16), 'Trailer'));
+      const f = dadosDaFicha(d, t);
+      fDirecao.preencher(f.direcao[1]); fRoteiro.preencher(f.roteiro[1]); fElenco.preencher(f.elenco[1]); fProducao.preencher(f.producao[1]);
+      if (f.classificacao) {
+        classifSlot.setAttribute('data-c', f.classificacao);
+        classifSlot.title = f.classificacao === 'L' ? 'Classificação indicativa: livre' : `Classificação indicativa: ${f.classificacao} anos`;
+        classifSlot.textContent = f.classificacao;
+        classifSlot.hidden = false;
+      }
+      if (d.trailer) trailerSlot.append(h('button', { type: 'button', class: 'btn-primario', onclick: () => abrirTrailer(d.trailer) }, icone('play', 16), 'Trailer'));
       if (d.votos) votosTmdb.textContent = `(${d.votos.toLocaleString('pt-BR')} votos)`;
     }).catch(() => { /* a ficha é um bônus */ });
 
-    const rapido = (st) => h('button', { type: 'button', class: 'btn-contorno' + (meu && meu.status === st ? ' ligado' : ''), 'aria-pressed': String(!!meu && meu.status === st),
+    // Marcação rápida de status (faixa de avaliação). Clicar de novo no status ligado tira a marcação.
+    const rapido = (st) => h('button', { type: 'button', class: 'btn-status-rapido' + (meu && meu.status === st ? ' ligado' : ''), style: { '--cor': COR_STATUS[st] },
+      'aria-pressed': String(!!meu && meu.status === st),
       onclick: async (e) => {
         const antes = meu ? { ...meu } : null;
         const remover = meu && meu.status === st;
+        const rolagem = window.scrollY;
         e.currentTarget.classList.add('salvando'); e.currentTarget.disabled = true;
         try {
           if (remover) { await chamar('remover_status', { titulo_id: t.id }); removerStatusLocal(estado.membro.id, t.id); }
           else { await chamar('marcar_status', { titulo_id: t.id, status: st }); aplicarStatusLocal(estado.membro.id, t.id, { status: st, visto_em: st === 'visto' ? new Date().toISOString() : '' }); }
-          desenhar();
-        } catch (err) { avisar(err.message, 'erro'); if (antes) aplicarStatusLocal(estado.membro.id, t.id, antes); desenhar(); }
+        } catch (err) { avisar(err.message, 'erro'); if (antes) aplicarStatusLocal(estado.membro.id, t.id, antes); }
+        desenhar(); window.scrollTo(0, rolagem);
       } }, ROTULOS[st]);
+    // "Assistindo" só faz sentido para o que tem episódios (série, anime, dorama...); filme já marcado continua podendo trocar.
+    const statusDisponiveis = ['quero_ver', 'visto', 'abandonado', 'assistindo'].filter((st) => st !== 'assistindo' || t.tipo !== 'filme' || (meu && meu.status === 'assistindo'));
+    const painelStatus = h('div', { class: 'resumo-status' }, h('small', null, 'Marque como você está'), h('div', { class: 'resumo-status-botoes' }, statusDisponiveis.map(rapido)));
 
     const conteudo = h('div', { class: 'pagina-titulo' },
       h('a', { class: 'voltar', href: '#/catalogo' }, icone('voltar', 18), 'Voltar ao catálogo'),
       h('section', { class: 'tit-hero' },
         fundoImg(t, 'tit-fundo'),
+        classifSlot,
         h('div', { class: 'tit-topo' },
           h('div', { class: 'tit-capa' }, capa(t, true)),
           h('div', { class: 'tit-info' },
-            h('div', { class: 'linha-pills' },
-              h('span', { class: 'pill-tipo' }, rotuloCategoria(t)),
-              [t.ano, ...detalhes].filter(Boolean).map((x) => h('span', { class: 'meta-chip' }, x))
-            ),
             h('h1', null, t.nome),
+            [t.ano, duracaoTitulo(t)].filter(Boolean).length ? h('p', { class: 'tit-meta' }, [t.ano, duracaoTitulo(t)].filter(Boolean).join(' • ')) : null,
             nomesExtras(t),
-            h('div', { class: 'tit-nota-linha' },
-              media !== null ? h('span', { class: 'nota-galera' }, h('span', { class: 'estrelas' }, '★'), h('strong', null, formatarNota(media)), h('small', { class: 'suave' }, ` (${notas.length} ${notas.length === 1 ? 'avaliação' : 'avaliações'} da galera)`))
-                : h('span', { class: 'suave' }, 'Sem notas da galera ainda'),
-              t.nota_tmdb !== null ? h('span', { class: 'nota-tmdb' }, 'TMDB ★ ' + formatarNota(t.nota_tmdb), ' ', votosTmdb) : null),
-            h('div', { class: 'tit-acoes' }, rapido('quero_ver'), rapido('assistindo'), rapido('visto'), trailerSlot),
+            h('p', { class: 'tit-meta-tmdb' },
+              t.nota_tmdb !== null ? ['Nota TMDB ★ ' + formatarNota(t.nota_tmdb), ' ', votosTmdb] : 'Sem nota no TMDB',
+              t.tmdb_id ? [' • ', linkTmdb(t)] : null),
+            h('div', { class: 'tit-acoes' }, trailerSlot),
             sinopse(t),
-            exibSlot,
-            ficha,
-            t.generos.length ? h('div', { class: 'generos' }, t.generos.map((g) => h('span', { class: 'genero' }, g))) : null,
-            h('div', { class: 'tit-rodape-hero' }, indicacao(t), linkTmdb(t))
+            h('dl', { class: 'tit-ficha' }, fDirecao.linha, fRoteiro.linha, fElenco.linha, generosLinha, fProducao.linha)
           )
-        )
+        ),
+        exibSlot
       ),
-      resumoAvaliacao(t, linhas, notas, media, contagem),
+      resumoAvaliacao(t, linhas, notas, media, contagem, painelStatus),
       h('section', { class: 'tit-corpo' }, painelGrupo(t, linhas, membros, contagem), painelMeu(t, meu))
     );
     montar(raiz, casca('catalogo', conteudo));
   }
 
   /** Faixa de avaliação: média da galera + distribuição em estrelas, e quantos querem ver / assistiram. */
-  function resumoAvaliacao(t, linhas, notas, media, contagem) {
+  function resumoAvaliacao(t, linhas, notas, media, contagem, painelStatus) {
     const balde = [0, 0, 0, 0, 0];   // 1★ … 5★ (notas de 0 a 10 → cada estrela vale 2 pontos)
     notas.forEach((n) => { balde[Math.min(5, Math.max(1, Math.ceil(n / 2))) - 1] += 1; });
     const topo = Math.max(1, ...balde);
@@ -129,36 +142,21 @@ export function telaTitulo({ raiz, ativa, params }) {
         numero(contagem.quero_ver, 'querem ver', COR_STATUS.quero_ver),
         numero(contagem.assistindo, 'assistindo', COR_STATUS.assistindo),
         numero(contagem.visto, 'assistiram', COR_STATUS.visto),
-        numero(contagem.abandonado, 'abandonaram', COR_STATUS.abandonado)));
+        numero(contagem.abandonado, 'abandonaram', COR_STATUS.abandonado)),
+      painelStatus,
+      indicacao(t));
   }
 
   function sinopse(t) {
-    const texto = t.sinopse || 'Sem sinopse disponível.';
-    const longa = texto.length > 330;
-    const p = h('p', { class: 'sinopse-texto' + (longa ? ' recortada' : '') }, texto);
-    return h('div', { class: 'sinopse' }, p,
-      longa ? h('button', { type: 'button', class: 'link-discreto', onclick: (e) => {
-        const aberta = p.classList.toggle('recortada') === false;
-        e.currentTarget.textContent = aberta ? 'Mostrar menos' : 'Ler mais';
-      } }, 'Ler mais') : null);
+    return h('div', { class: 'sinopse' }, h('p', { class: 'sinopse-texto' }, t.sinopse || 'Sem sinopse disponível.'));
   }
 
   function nomesExtras(t) {
-    const itens = [];
-    if (t.titulo_original) itens.push(['Título original', t.titulo_original]);
     const outros = t.outros_titulos || [];
-    if (outros.length) {
-      const resto = outros.slice(2);
-      const caixa = h('p', { class: 'nome-extra' }, h('span', null, 'Também chamado de'), outros.slice(0, 2).join(' · '));
-      if (resto.length) {
-        const mais = h('span', { class: 'mais-nomes', hidden: true }, ' · ' + resto.join(' · '));
-        caixa.append(mais, h('button', { type: 'button', class: 'link-discreto', onclick: (e) => {
-          mais.hidden = !mais.hidden; e.currentTarget.textContent = mais.hidden ? `+${resto.length}` : 'menos';
-        } }, `+${resto.length}`));
-      }
-      itens.push(caixa);
-    }
-    return h('div', { class: 'nomes' }, itens.map((x) => Array.isArray(x) ? h('p', { class: 'nome-extra' }, h('span', null, x[0]), x[1]) : x));
+    if (!t.titulo_original && !outros.length) return null;
+    return h('div', { class: 'nomes' },
+      t.titulo_original ? h('p', { class: 'nome-extra' }, h('span', null, 'Título original:'), t.titulo_original) : null,
+      outros.length ? h('p', { class: 'nome-extra' }, h('span', null, 'Também conhecido como:'), outros.join(' · ')) : null);
   }
 
   function indicacao(t) {

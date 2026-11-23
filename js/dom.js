@@ -5,7 +5,7 @@ export function h(tag, atributos, ...filhos) {
   for (const [nome, valor] of Object.entries(atributos || {})) {
     if (valor === null || valor === undefined || valor === false) continue;
     if (nome === 'class') el.className = valor;
-    else if (nome === 'style') Object.assign(el.style, valor);
+    else if (nome === 'style') { for (const k in valor) { if (k.startsWith('--')) el.style.setProperty(k, valor[k]); else el.style[k] = valor[k]; } }
     else if (nome.startsWith('on') && typeof valor === 'function') el.addEventListener(nome.slice(2), valor);
     else if (valor === true) el.setAttribute(nome, '');
     else el.setAttribute(nome, String(valor));

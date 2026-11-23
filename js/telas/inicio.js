@@ -1,10 +1,10 @@
 import { h, montar, icone } from '../dom.js';
-import { estado, carregarCatalogo } from '../estado.js';
+import { estado, carregarCatalogo, achaTitulo } from '../estado.js';
 import { chamar } from '../api.js';
 import { cartaoTitulo } from '../cartao.js';
-import { carregarEventos, eventoAtivo, limparEventos, colagem } from '../eventos.js';
+import { carregarEventos, eventoAtivo, limparEventos, colagem, quemVai, diaLongo, hhmm } from '../eventos.js';
 import { dataLonga, contagem, jaComecou, haQuanto } from '../datas.js';
-import { casca, esqueleto, avatar, capa, fundoImg, avisar, COR_STATUS } from '../ui.js';
+import { casca, esqueleto, avatar, capa, fundoImg, avisar, COR_STATUS, duracaoTitulo } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
 const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
@@ -15,6 +15,38 @@ export function telaInicio({ raiz, ativa }) {
   montar(raiz, casca('inicio', conteudo));
   let timer = null;
   const bannerEvento = h('a', { class: 'aviso-evento', hidden: true, href: '#/eventos', 'aria-label': 'Evento da galera' });
+  let dadosEvento = null; // { e, vt } do último carregamento: o card é redesenhado quando o catálogo (com os membros) chega
+  function pintarEvento() {
+    if (!dadosEvento) return;
+    const { e, vt } = dadosEvento;
+    bannerEvento.hidden = false;
+    bannerEvento.href = e ? '#/evento/' + e.id : '#/eventos';
+    const rolando = e && jaComecou(e);
+    const membros = estado.catalogo ? estado.catalogo.membros : [];
+    const vao = e ? quemVai(e, membros, 'vou', 6) : null;
+    const filmes = e ? (e.titulos || []).length : 0;
+    const primeiro = e ? (e.titulos || []).map(achaTitulo).find(Boolean) : null;
+    const fundo = primeiro ? fundoImg(primeiro, 'ae-fundo') : null;
+    const chip = (ic, txt, extra = '') => h('span', { class: 'ae-chip ' + extra }, icone(ic, 16), txt);
+    montar(bannerEvento,
+      fundo,
+      e ? h('div', { class: 'ae-capa' }, colagem(e)) : null,
+      h('div', { class: 'ae-texto' },
+        h('span', { class: 'ae-rotulo' + (rolando ? ' ao-vivo' : '') }, rolando ? h('i', { class: 'ae-ponto' }) : icone('calendario', 16), e ? (rolando ? 'Rolando agora' : 'Próximo evento') : 'Votação aberta'),
+        e ? h('h2', null, e.nome) : null,
+        e ? h('div', { class: 'ae-chips' },
+          chip('calendario', diaLongo(e.inicio).replace(/^./, (c) => c.toUpperCase())),
+          chip('relogio', hhmm(e.inicio)),
+          rolando ? null : chip('raio', contagem(e.inicio), 'ouro')) : null,
+        e && e.descricao ? h('p', { class: 'ae-desc' }, e.descricao) : null,
+        vt ? h('p', { class: 'ae-voto' }, `🗳️ ${vt} ${vt === 1 ? 'votação aberta esperando' : 'votações abertas esperando'} o seu voto`) : null),
+      e ? h('div', { class: 'ae-lado' },
+        h('div', { class: 'ae-quem' },
+          vao.total ? [vao.pilha, h('span', null, h('strong', null, String(vao.total)), vao.total === 1 ? ' confirmado' : ' confirmados')]
+            : h('span', { class: 'suave' }, 'Ninguém confirmou ainda'),
+          filmes ? h('span', { class: 'suave' }, `${filmes} ${filmes === 1 ? 'filme' : 'filmes'} na programação`) : null),
+        h('span', { class: 'btn-primario' }, 'Ver evento', h('span', { 'aria-hidden': 'true' }, '→'))) : null);
+  }
   function carregarWidget() {
     carregarEventos().then((d) => {
       if (!ativa()) return;
@@ -22,17 +54,8 @@ export function telaInicio({ raiz, ativa }) {
       const e = ativos[0];
       const vt = d.votacoes.filter((v) => !v.encerrada && (v.meus_votos || []).length < v.max_votos).length;
       if (!e && !vt) return;
-      bannerEvento.hidden = false;
-      bannerEvento.href = e ? '#/evento/' + e.id : '#/eventos';
-      const rolando = e && jaComecou(e);
-      montar(bannerEvento,
-        e ? h('div', { class: 'ae-capa' }, colagem(e)) : null,
-        h('div', { class: 'ae-texto' },
-          h('span', { class: 'ae-rotulo' }, icone('calendario', 16), e ? (rolando ? 'Rolando agora' : 'Próximo evento') : 'Votação aberta'),
-          e ? h('h2', null, e.nome) : null,
-          e ? h('p', { class: 'ae-data' }, dataLonga(e.inicio) + (rolando ? '' : ' · ' + contagem(e.inicio))) : null,
-          e && e.descricao ? h('p', { class: 'ae-desc suave' }, e.descricao) : null,
-          vt ? h('p', { class: 'ae-voto' }, `🗳️ ${vt} ${vt === 1 ? 'votação aberta esperando' : 'votações abertas esperando'} o seu voto`) : null));
+      dadosEvento = { e, vt };
+      pintarEvento();
     }).catch(() => { /* a home funciona sem o aviso */ });
   }
 
@@ -49,6 +72,7 @@ export function telaInicio({ raiz, ativa }) {
     const { titulos, membros, status } = estado.catalogo;
     const porId = Object.fromEntries(titulos.map((t) => [t.id, t]));
     const quem = Object.fromEntries(membros.map((m) => [m.id, m]));
+    pintarEvento(); // agora que os membros chegaram, mostra quem vai
     const recentes = titulos.slice().sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     montar(conteudo,
       hero(recentes.slice(0, 5)),
@@ -75,6 +99,7 @@ export function telaInicio({ raiz, ativa }) {
         fundoImg(t, 'hero-fundo'),
         h('div', { class: 'hero-texto' },
           h('h1', null, t.nome),
+          [t.ano, duracaoTitulo(t)].filter(Boolean).length ? h('p', { class: 'hero-meta' }, [t.ano, duracaoTitulo(t)].filter(Boolean).join(' • ')) : null,
           h('p', { class: 'hero-sinopse' }, t.sinopse || 'Sem sinopse cadastrada.'),
           h('div', { class: 'hero-acoes' }, h('a', { class: 'btn-primario', href: '#/titulo/' + t.id }, 'Ver detalhes'))));
     });

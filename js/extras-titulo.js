@@ -11,10 +11,10 @@ export function detalhesTmdb(titulo) {
 }
 
 /** Link para a página do título no TMDB. */
-export function linkTmdb(titulo) {
+export function linkTmdb(titulo, texto = 'Veja no TMDB ↗') {
   if (!titulo.tmdb_id) return null;
   return h('a', { class: 'link-tmdb', href: `https://www.themoviedb.org/${titulo.tipo === 'filme' ? 'movie' : 'tv'}/${titulo.tmdb_id}?language=pt-BR`,
-    target: '_blank', rel: 'noopener noreferrer' }, 'Ver mais informações no TMDB ↗');
+    target: '_blank', rel: 'noopener noreferrer' }, texto);
 }
 
 /** Janela com o trailer; o player do YouTube só é carregado quando a janela abre. */
@@ -32,21 +32,15 @@ export function abrirTrailer(v) {
   fundo.querySelector('button').focus();
 }
 
-const DATA = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-const IDIOMA = (() => { try { return new Intl.DisplayNames(['pt-BR'], { type: 'language' }); } catch { return null; } })();
-
-/** Linhas "Direção: …", "Elenco: …" etc. a partir dos detalhes. */
-export function linhasDaFicha(d, titulo) {
+/** Textos da ficha a partir dos detalhes do TMDB: { direcao: [rótulo, texto], roteiro, elenco, producao, classificacao }. */
+export function dadosDaFicha(d, titulo) {
   const filme = titulo.tipo === 'filme';
-  const linhas = [];
-  const add = (rotulo, valor) => { if (valor) linhas.push(h('div', { class: 'ficha-linha' }, h('dt', null, rotulo), h('dd', null, valor))); };
-  add(filme ? 'Direção' : 'Criação', d.direcao && d.direcao.join(', '));
-  add('Roteiro', d.roteiro && d.roteiro.join(', '));
-  add('Elenco', d.elenco && d.elenco.join(', '));
-  add('Classificação', d.classificacao ? h('span', null, h('b', { class: 'classif', 'data-c': d.classificacao }, d.classificacao === 'L' ? 'L' : d.classificacao), d.classificacao === 'L' ? ' livre' : ' anos') : '');
-  add('Lançamento', d.lancamento && /^\d{4}-\d{2}-\d{2}$/.test(d.lancamento) ? DATA.format(new Date(d.lancamento + 'T00:00:00Z')) : '');
-  const idioma = d.idioma && IDIOMA ? IDIOMA.of(d.idioma) : '';
-  add('Origem', [(d.pais || []).join(', '), idioma ? 'idioma original: ' + idioma : ''].filter(Boolean).join(' · '));
-  add('Produção', d.produtoras && d.produtoras.join(', '));
-  return linhas;
+  const juntar = (l) => (l && l.length ? l.join(', ') : '');
+  return {
+    direcao: [filme ? 'Direção' : 'Criação', juntar(d.direcao)],
+    roteiro: ['Roteiro', juntar(d.roteiro)],
+    elenco: ['Elenco', juntar(d.elenco)],
+    producao: ['Produção', juntar(d.produtoras)],
+    classificacao: d.classificacao || ''
+  };
 }

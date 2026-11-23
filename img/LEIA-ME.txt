@@ -1,0 +1,3 @@
+As imagens de fundo das páginas (heros do Catálogo, Sorteio, Adicionar e Login) agora são trocadas
+dentro do site: Admin > Aparência. Não é preciso colocar arquivos aqui nem subir nada no GitHub.
+Esta pasta guarda apenas o logo e a arte das conquistas (img/badges/<chave>.png).
