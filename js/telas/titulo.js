@@ -1,7 +1,7 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, achaTitulo, statusDe, aplicarStatusLocal, removerStatusLocal } from '../estado.js';
 import { chamar } from '../api.js';
-import { casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, duracaoTitulo } from '../ui.js';
+import { statusDoTipo, casca, esqueleto, avatar, capa, fundoImg, avisar, ROTULOS, COR_STATUS, ORDEM_STATUS, formatarNota, CATEGORIAS, CATEGORIAS_POR_TIPO, duracaoTitulo } from '../ui.js';
 import { dropdown } from '../dropdown.js';
 import { carregarEventos, exibicaoDe } from '../eventos.js';
 import { detalhesTmdb, abrirTrailer, linkTmdb, dadosDaFicha } from '../extras-titulo.js';
@@ -91,9 +91,9 @@ export function telaTitulo({ raiz, ativa, params }) {
         } catch (err) { avisar(err.message, 'erro'); if (antes) aplicarStatusLocal(estado.membro.id, t.id, antes); }
         desenhar(); window.scrollTo(0, rolagem);
       } }, ROTULOS[st]);
-    // "Assistindo" só faz sentido para o que tem episódios (série, anime, dorama...); filme já marcado continua podendo trocar.
-    const statusDisponiveis = ['quero_ver', 'visto', 'abandonado', 'assistindo'].filter((st) => st !== 'assistindo' || t.tipo !== 'filme' || (meu && meu.status === 'assistindo'));
-    const painelStatus = h('div', { class: 'resumo-status' }, h('small', null, 'Marque como você está'), h('div', { class: 'resumo-status-botoes' }, statusDisponiveis.map(rapido)));
+    // Filme: só "Quero ver" e "Visto". Série, anime, dorama etc.: os quatro.
+    const statusDisponiveis = statusDoTipo(t.tipo, meu && meu.status);
+    const painelStatus = h('div', { class: 'resumo-status' }, h('small', null, 'Marque como você está'), h('div', { class: 'resumo-status-botoes', 'data-n': String(statusDisponiveis.length) }, statusDisponiveis.map(rapido)));
 
     const conteudo = h('div', { class: 'pagina-titulo' },
       h('a', { class: 'voltar', href: '#/catalogo' }, icone('voltar', 18), 'Voltar ao catálogo'),
@@ -103,12 +103,8 @@ export function telaTitulo({ raiz, ativa, params }) {
         h('div', { class: 'tit-topo' },
           h('div', { class: 'tit-capa' }, capa(t, true)),
           h('div', { class: 'tit-info' },
-            h('h1', null, t.nome),
-            [t.ano, duracaoTitulo(t)].filter(Boolean).length ? h('p', { class: 'tit-meta' }, [t.ano, duracaoTitulo(t)].filter(Boolean).join(' • ')) : null,
-            nomesExtras(t),
-            h('p', { class: 'tit-meta-tmdb' },
-              t.nota_tmdb !== null ? ['Nota TMDB ★ ' + formatarNota(t.nota_tmdb), ' ', votosTmdb] : 'Sem nota no TMDB',
-              t.tmdb_id ? [' • ', linkTmdb(t)] : null),
+            h('h1', null, t.nome, alternativos(t)),
+            h('p', { class: 'tit-meta' }, ...metaLinha(t, votosTmdb)),
             h('div', { class: 'tit-acoes' }, trailerSlot),
             sinopse(t),
             h('dl', { class: 'tit-ficha' }, fDirecao.linha, fRoteiro.linha, fElenco.linha, generosLinha, fProducao.linha)
@@ -122,15 +118,15 @@ export function telaTitulo({ raiz, ativa, params }) {
     montar(raiz, casca('catalogo', conteudo));
   }
 
-  /** Faixa de avaliação: média da galera + distribuição em estrelas, e quantos querem ver / assistiram. */
+  /** Faixa de avaliação: média da comunidade + distribuição em estrelas, e quantos querem ver / assistiram. */
   function resumoAvaliacao(t, linhas, notas, media, contagem, painelStatus) {
     const balde = [0, 0, 0, 0, 0];   // 1★ … 5★ (notas de 0 a 10 → cada estrela vale 2 pontos)
     notas.forEach((n) => { balde[Math.min(5, Math.max(1, Math.ceil(n / 2))) - 1] += 1; });
     const topo = Math.max(1, ...balde);
     const numero = (n, rotulo, cor) => h('div', { class: 'resumo-num' }, h('strong', { style: cor ? { color: cor } : null }, String(n)), h('span', null, rotulo));
-    return h('section', { class: 'aval-resumo', 'aria-label': 'Avaliação da galera' },
+    return h('section', { class: 'aval-resumo', 'aria-label': 'Avaliação da comunidade' },
       h('div', { class: 'resumo-media' },
-        h('small', null, 'Avaliação da galera'),
+        h('small', null, 'Avaliação da comunidade'),
         media !== null ? [h('div', { class: 'resumo-grande' }, h('strong', null, formatarNota(media)), h('span', { class: 'estrelas' }, '★'.repeat(Math.round(media / 2)) + '☆'.repeat(5 - Math.round(media / 2)))),
           h('span', { class: 'suave pequeno' }, `${notas.length} ${notas.length === 1 ? 'avaliação' : 'avaliações'} · nota de 0 a 10`)]
           : h('span', { class: 'suave' }, 'Ninguém avaliou ainda. Seja a primeira pessoa!')),
@@ -151,12 +147,29 @@ export function telaTitulo({ raiz, ativa, params }) {
     return h('div', { class: 'sinopse' }, h('p', { class: 'sinopse-texto' }, t.sinopse || 'Sem sinopse disponível.'));
   }
 
-  function nomesExtras(t) {
-    const outros = t.outros_titulos || [];
-    if (!t.titulo_original && !outros.length) return null;
-    return h('div', { class: 'nomes' },
-      t.titulo_original ? h('p', { class: 'nome-extra' }, h('span', null, 'Título original:'), t.titulo_original) : null,
-      outros.length ? h('p', { class: 'nome-extra' }, h('span', null, 'Também conhecido como:'), outros.join(' · ')) : null);
+  /** Até dois outros nomes do título (original e alternativos), diferentes do nome principal: "Psicose ou Psycho". */
+  function alternativos(t) {
+    const vistos = new Set([t.nome.trim().toLowerCase()]);
+    const nomes = [t.titulo_original, ...(t.outros_titulos || [])].filter((n) => {
+      const k = String(n || '').trim().toLowerCase();
+      if (!k || vistos.has(k)) return false;
+      vistos.add(k); return true;
+    }).slice(0, 2);
+    if (!nomes.length) return null;
+    return h('span', { class: 'tit-ou' }, nomes.map((n) => [' ', h('span', { class: 'ou' }, 'ou'), ' ', h('span', { class: 'alt' }, n)]));
+  }
+
+  /** Ano • duração • ★ nota (votos): a nota do TMDB vai na mesma linha e abre o título lá. */
+  function metaLinha(t, votos) {
+    const itens = [t.ano, duracaoTitulo(t)].filter(Boolean).map((x) => h('span', null, String(x)));
+    if (t.nota_tmdb !== null) {
+      const texto = '★ ' + formatarNota(t.nota_tmdb);
+      const nota = t.tmdb_id ? linkTmdb(t, texto) : h('span', null, texto);
+      if (t.tmdb_id) nota.title = 'Ver no TMDB';
+      nota.append(' ', votos);
+      itens.push(nota);
+    }
+    return itens.flatMap((x, i) => (i ? [h('span', { class: 'sep', 'aria-hidden': 'true' }, '•'), x] : [x]));
   }
 
   function indicacao(t) {
@@ -194,47 +207,69 @@ export function telaTitulo({ raiz, ativa, params }) {
         h('button', { type: 'button', class: 'btn-sec', onclick: desenhar }, 'Cancelar'))));
   }
 
+  /** Avaliações da comunidade: um cartão por pessoa (status, estrelas, nota, andamento e crítica), com filtro por status. */
   function painelGrupo(t, linhas, membros, contagem) {
     const porMembro = Object.fromEntries(linhas.map((s) => [s.membro_id, s]));
     const marcaram = membros.filter((m) => porMembro[m.id]).sort((a, b) =>
+      (porMembro[b.id].comentario ? 1 : 0) - (porMembro[a.id].comentario ? 1 : 0) ||
       ORDEM_STATUS[porMembro[a.id].status] - ORDEM_STATUS[porMembro[b.id].status] || a.nome.localeCompare(b.nome, 'pt-BR'));
     const faltam = membros.filter((m) => !porMembro[m.id]).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    let filtro = 'todos';
 
-    const barra = linhas.length ? h('div', { class: 'barra-grupo', role: 'img', 'aria-label': 'Distribuição dos status do grupo' },
-      ['visto', 'assistindo', 'quero_ver', 'abandonado'].filter((k) => contagem[k]).map((k) =>
-        h('span', { style: { flex: String(contagem[k]), background: COR_STATUS[k] }, title: `${contagem[k]} ${ROTULOS[k].toLowerCase()}` })),
-      faltam.length ? h('span', { class: 'resto', style: { flex: String(faltam.length) }, title: faltam.length + ' sem marcar' }) : null) : null;
+    const estrelasTexto = (n) => { const c = Math.round(n / 2); return '★'.repeat(c) + '☆'.repeat(5 - c); };
 
     const cartaoMembro = (m) => {
       const s = porMembro[m.id];
       const cor = COR_STATUS[s.status];
-      const prog = t.tipo === 'serie' && s.temporada_atual && s.episodio_atual ? `Temporada ${s.temporada_atual} · episódio ${s.episodio_atual}` : '';
-      const comentario = s.comentario ? [
-        h('blockquote', { class: 'comentario' }, s.comentario),
-        estado.membro.admin && m.id !== estado.membro.id ? h('button', { type: 'button', class: 'link-discreto', onclick: async (e) => {
-          if (!confirm('Apagar este comentário? A nota é mantida.')) return;
-          try {
-            await chamar('admin_limpar_comentario', { titulo_id: t.id, membro_id: m.id });
-            s.comentario = ''; const q = e.target.previousElementSibling; if (q) q.remove(); e.target.remove(); avisar('Comentário apagado.');
-          } catch (err) { avisar(err.message, 'erro'); }
-        } }, 'Apagar comentário (moderação)') : null] : [];
-      return h('li', { class: 'mb-card', style: { '--cor': cor } },
-        h('div', { class: 'mb-topo' },
-          avatar(m, { tamanho: 44, cor }),
-          h('div', { class: 'mb-quem' },
+      const prog = t.tipo !== 'filme' && s.temporada_atual && s.episodio_atual ? `Temporada ${s.temporada_atual} · episódio ${s.episodio_atual}` : '';
+      const moderar = s.comentario && estado.membro.admin && m.id !== estado.membro.id ? h('button', { type: 'button', class: 'link-discreto', onclick: async (e) => {
+        if (!confirm('Apagar este comentário? A nota é mantida.')) return;
+        try {
+          await chamar('admin_limpar_comentario', { titulo_id: t.id, membro_id: m.id });
+          s.comentario = ''; const q = e.target.parentElement.querySelector('.av-critica'); if (q) q.remove(); e.target.remove(); avisar('Comentário apagado.');
+        } catch (err) { avisar(err.message, 'erro'); }
+      } }, 'Apagar comentário (moderação)') : null;
+      return h('li', { class: 'av-card', style: { '--cor': cor } },
+        h('div', { class: 'av-topo' },
+          avatar(m, { tamanho: 46, cor }),
+          h('div', { class: 'av-quem' },
             h('strong', null, m.nome + (m.id === estado.membro.id ? ' (você)' : '')),
             h('span', { class: 'pill-status', style: { color: cor, borderColor: cor } }, ROTULOS[s.status])),
-          s.nota !== null ? h('span', { class: 'mb-nota' }, h('small', null, 'nota'), '★ ' + formatarNota(s.nota)) : null),
-        prog ? h('p', { class: 'mb-prog' }, prog) : null,
-        ...comentario);
+          s.nota !== null ? h('div', { class: 'av-nota', title: 'Nota de 0 a 10' },
+            h('span', { class: 'estrelas' }, estrelasTexto(s.nota)), h('strong', null, formatarNota(s.nota))) : null),
+        prog ? h('p', { class: 'av-prog' }, icone('play', 13), prog) : null,
+        s.comentario ? h('blockquote', { class: 'av-critica' }, s.comentario) : null,
+        moderar);
     };
+
+    const lista = h('ul', { class: 'av-lista' });
+    const filtros = h('div', { class: 'av-filtros', role: 'group', 'aria-label': 'Filtrar avaliações' });
+    function pintar() {
+      const vistos = marcaram.filter((m) => filtro === 'todos' || porMembro[m.id].status === filtro);
+      montar(lista, vistos.map(cartaoMembro));
+      montar(filtros, [['todos', 'Todos', marcaram.length], ...['visto', 'assistindo', 'quero_ver', 'abandonado'].map((k) => [k, ROTULOS[k], contagem[k]])]
+        .filter(([k, , n]) => n > 0 && (k === 'todos' || marcaram.length > 1))
+        .map(([k, rotulo, n]) => h('button', { type: 'button', class: 'av-filtro' + (filtro === k ? ' ligado' : ''), 'aria-pressed': String(filtro === k),
+          onclick: () => { filtro = k; pintar(); } }, rotulo, h('span', { class: 'n' }, String(n)))));
+      if (marcaram.length < 2) filtros.hidden = true;
+    }
+    pintar();
+
+    const vazio = h('div', { class: 'av-vazio' },
+      h('span', { class: 'av-vazio-ico' }, icone('estrela', 30)),
+      h('strong', null, 'Ninguém avaliou ainda'),
+      h('p', { class: 'suave' }, 'Marque como você está e deixe sua nota e sua crítica. Elas aparecem aqui para toda a comunidade.'),
+      h('button', { type: 'button', class: 'btn-primario', onclick: () => {
+        const campo = document.getElementById('comentario');
+        const painel = campo && campo.closest('form');
+        if (painel) painel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } }, 'Avaliar agora'));
 
     return h('div', { class: 'grupo-painel' },
       h('div', { class: 'grupo-topo' },
-        h('h2', null, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Avaliações da galera'),
-        linhas.length ? h('span', { class: 'suave' }, `${linhas.length} de ${membros.length} já marcaram`) : null),
-      barra,
-      marcaram.length ? h('ul', { class: 'mb-grade' }, marcaram.map(cartaoMembro)) : h('p', { class: 'suave' }, 'Ninguém marcou este título ainda. Seja a primeira pessoa!'),
+        h('h2', null, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Avaliações da comunidade'),
+        h('span', { class: 'suave av-contagem' }, `${linhas.length} de ${membros.length} já marcaram`)),
+      marcaram.length ? [filtros, lista] : vazio,
       faltam.length && marcaram.length ? h('div', { class: 'faltam' }, h('small', null, 'Ainda não marcaram'),
         h('div', { class: 'faltam-avatares' }, faltam.map((m) => h('span', { class: 'faltam-item', title: m.nome }, avatar(m, { tamanho: 30 }), h('span', null, m.nome))))) : null
     );
@@ -250,7 +285,7 @@ export function telaTitulo({ raiz, ativa, params }) {
     const temporada = serie ? campo('temporada', meu && meu.temporada_atual, { min: '1', max: '100', step: '1' }) : null;
     const episodio = serie ? campo('episodio', meu && meu.episodio_atual, { min: '1', max: '5000', step: '1' }) : null;
     const nota = campo('nota', meu && meu.nota, { min: '0', max: '10', step: '0.5', inputmode: 'decimal' });
-    const avisoNota = h('p', { class: 'suave pequeno', hidden: true }, 'A nota fica disponível depois que você começar a assistir.');
+    const avisoNota = h('p', { class: 'suave pequeno', hidden: true }, 'Você pode dar nota depois de marcar como visto' + (t.tipo === 'filme' ? '.' : ', assistindo ou abandonado.'));
     const comentario = h('textarea', { id: 'comentario', rows: '4', maxlength: '1000', placeholder: 'O que você achou?' }, meu ? meu.comentario : '');
 
     function marcar(status) {
@@ -269,7 +304,7 @@ export function telaTitulo({ raiz, ativa, params }) {
       avisoNota.hidden = pode;
     }
 
-    const grupoStatus = h('div', { class: 'grupo-chips' }, ['quero_ver', 'assistindo', 'visto', 'abandonado'].map((st) => {
+    const grupoStatus = h('div', { class: 'grupo-chips' }, statusDoTipo(t.tipo, meu && meu.status).map((st) => {
       botoes[st] = h('button', { type: 'button', class: 'chip-status', 'aria-pressed': 'false', onclick: () => marcar(st) }, ROTULOS[st]);
       return botoes[st];
     }));
@@ -290,7 +325,7 @@ export function telaTitulo({ raiz, ativa, params }) {
       onsubmit: async (e) => {
         e.preventDefault();
         erro.textContent = '';
-        if (!escolhido) { erro.textContent = 'Escolha um status: quero ver, assistindo, visto ou abandonado.'; return; }
+        if (!escolhido) { erro.textContent = 'Escolha um status antes de salvar.'; return; }
         const n = nota.value.trim() === '' ? '' : Number(String(nota.value).replace(',', '.'));
         if (n !== '' && (!isFinite(n) || n < 0 || n > 10)) { erro.textContent = 'A nota vai de 0 a 10.'; return; }
         const dados = { titulo_id: t.id, status: escolhido, nota: n, comentario: comentario.value.trim() };
@@ -326,7 +361,7 @@ export function telaTitulo({ raiz, ativa, params }) {
         proximo,
         h('p', { class: 'suave pequeno' }, 'Terminou a temporada? Aumente a temporada e volte o episódio para 1.')
       ) : null,
-      h('div', { class: 'bloco' }, h('label', { for: 'nota', class: 'rotulo' }, 'Como você avalia este título?'), seletorEstrelas(nota), nota, avisoNota),
+      h('div', { class: 'bloco' }, h('label', { for: 'nota', class: 'rotulo' }, 'Sua nota'), h('div', { class: 'nota-linha' }, seletorEstrelas(nota), h('span', { class: 'nota-campo' }, nota, h('small', null, '/ 10'))), avisoNota),
       h('div', { class: 'bloco' }, h('label', { for: 'comentario', class: 'rotulo' }, 'Sua crítica'), comentario),
       erro, salvar,
       meu ? h('button', {

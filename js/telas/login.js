@@ -12,7 +12,7 @@ function campo(ico, input, direita = null) {
 }
 
 const DESTAQUES = [
-  ['amigos', 'Catálogo da galera', 'Nossos filmes e séries, num só lugar.'],
+  ['amigos', 'Catálogo da comunidade', 'Nossos filmes e séries, num só lugar.'],
   ['calendario', 'Eventos e maratonas', 'Programação, votações e presença.'],
   ['estrela', 'Notas e conquistas', 'Avalie, comente e junte medalhas.']
 ];
@@ -31,7 +31,7 @@ export function telaLogin({ raiz, params }) {
         h('div', { class: 'login-marca-texto' },
           h('div', { class: 'marca-grande' }, marcaLogo(), NOME_DO_GRUPO),
           h('span', { class: 'login-traco' }),
-          h('h1', null, 'Nosso catálogo.', h('br'), 'Nossa galera.', h('br'), 'Nossas histórias.'),
+          h('h1', null, 'Nosso catálogo.', h('br'), 'Nossa comunidade.', h('br'), 'Nossas histórias.'),
           h('ul', { class: 'login-destaques' }, DESTAQUES.map(([ico, t, d]) => h('li', null, h('span', { class: 'ouro' }, icone(ico, 28)), h('strong', null, t), h('span', { class: 'suave' }, d)))))),
       h('section', { class: 'login-form' },
         h('div', { class: 'login-topo' }, modo === 'convite'
@@ -130,7 +130,7 @@ export function telaLogin({ raiz, params }) {
       codigo.value = limpo.length > 4 ? limpo.slice(0, 4) + '-' + limpo.slice(4) : limpo;
     });
     codigo.value = codigoDigitado.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8).replace(/^(.{4})(.+)$/, '$1-$2');
-    const nome = h('input', { id: 'convite-nome', maxlength: '40', autocomplete: 'name', required: true, placeholder: 'Como a galera te chama' });
+    const nome = h('input', { id: 'convite-nome', maxlength: '40', autocomplete: 'name', required: true, placeholder: 'Como a comunidade te chama' });
     const email = h('input', { id: 'convite-email', type: 'email', autocomplete: 'email', required: true, value: emailDigitado, placeholder: 'voce@email.com' });
     const botao = h('button', { type: 'submit', class: 'btn-primario cheio' }, 'Entrar no grupo');
     return h('form', {

@@ -116,16 +116,16 @@ export function telaAdicionar({ raiz, ativa }) {
       h('div', { class: 'add-hero-texto' },
         h('span', { class: 'add-sobre' }, icone('novo', 16), 'Novo no catálogo'),
         h('h1', null, 'Adicionar título'),
-        h('p', null, 'Busque um filme, série, anime ou dorama e coloque no catálogo da galera.'),
+        h('p', null, 'Busque um filme, série, anime ou dorama e coloque no catálogo da comunidade.'),
         h('div', { class: 'add-busca' }, icone('busca', 22), form),
         chipsEl)), 'adicionar'),
     saida, ocioso)));
   desenharOcioso();
   campo.focus();
 
-  /** Antes da busca: como funciona + o que a galera adicionou por último. */
+  /** Antes da busca: como funciona + o que a comunidade adicionou por último. */
   function desenharOcioso() {
-    const passos = [['1', 'Busque', 'Digite o nome. A busca usa o TMDB, então tem de tudo.'], ['2', 'Escolha a categoria', 'Anime, dorama, reality… você decide onde ele fica.'], ['3', 'Adicione', 'Pronto! Vira ficha no catálogo e todo mundo pode marcar.']];
+    const passos = [['1', 'Busque', 'Digite o nome. A busca usa o TMDB, então tem de tudo.'], ['2', 'Escolha a categoria', 'Anime, animação, dorama, musical, reality… você decide onde ele fica.'], ['3', 'Adicione', 'Pronto! Vira ficha no catálogo e todo mundo pode marcar.']];
     const recentes = h('div', { class: 'add-recentes' });
     montar(ocioso,
       h('section', { class: 'add-passos' }, passos.map(([n, t, d]) => h('div', { class: 'add-passo' }, h('span', { class: 'add-num' }, n), h('strong', null, t), h('p', { class: 'suave' }, d)))),

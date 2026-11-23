@@ -7,6 +7,14 @@ import { NOME_DO_GRUPO } from './config.js';
 
 export const ROTULOS = { quero_ver: 'Quero ver', assistindo: 'Assistindo', visto: 'Visto', abandonado: 'Abandonado' };
 export const COR_STATUS = { quero_ver: 'var(--quer)', assistindo: 'var(--assistindo)', visto: 'var(--ouro)', abandonado: 'var(--abandonou)' };
+/** Marcações possíveis por tipo: filme só "Quero ver" e "Visto"; o que tem episódios também "Assistindo" e "Abandonado".
+ *  Quem já tinha uma marcação antiga que não está na lista continua a vê-la (não some de repente). */
+export function statusDoTipo(tipo, atual) {
+  const todos = ['quero_ver', 'assistindo', 'visto', 'abandonado'];
+  if (tipo !== 'filme') return todos;
+  return todos.filter((st) => st === 'quero_ver' || st === 'visto' || st === atual);
+}
+
 export const ORDEM_STATUS = { visto: 0, assistindo: 1, quero_ver: 2, abandonado: 3 };
 
 const BANNERS = {
@@ -29,13 +37,8 @@ export function banner(membro) {
   return el;
 }
 
-export const CATEGORIAS = {
-  filme: 'Filme', serie: 'Série', anime: 'Anime', dorama: 'Dorama', reality: 'Reality', documentario: 'Documentário'
-};
-export const CATEGORIAS_POR_TIPO = {
-  filme: ['filme', 'anime', 'documentario'],
-  serie: ['serie', 'anime', 'dorama', 'reality', 'documentario']
-};
+export { CATEGORIAS, CATEGORIAS_POR_TIPO } from './categorias.js';
+import { CATEGORIAS } from './categorias.js';
 export const rotuloCategoria = (t) => CATEGORIAS[t.categoria] || (t.tipo === 'filme' ? 'Filme' : 'Série');
 
 export function normalizar(texto) {

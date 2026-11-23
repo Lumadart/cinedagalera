@@ -1,7 +1,7 @@
 import { h, icone } from './dom.js';
 import { estado, aplicarStatusLocal, removerStatusLocal } from './estado.js';
 import { chamar } from './api.js';
-import { capa, avisar, ROTULOS, COR_STATUS, rotuloCategoria, detalheTitulo, formatarNota } from './ui.js';
+import { statusDoTipo, capa, avisar, ROTULOS, COR_STATUS, rotuloCategoria, detalheTitulo, formatarNota } from './ui.js';
 
 export function fecharMenus() {
   document.querySelectorAll('.menu-status').forEach((m) => {
@@ -44,7 +44,7 @@ export function cartaoTitulo(t, { aoMudar, nota = null }) {
       onclick: (e) => { e.stopPropagation(); definir(st); }
     }, h('span', { class: 'ponto', style: { background: COR_STATUS[st] } }), ROTULOS[st]);
     const menu = h('div', { class: 'menu-status', role: 'menu', onclick: (e) => e.stopPropagation() },
-      op('quero_ver'), op('assistindo'), op('visto'), op('abandonado'),
+      ...statusDoTipo(t.tipo, meu && meu.status).map(op),
       ...(meu ? [h('button', { type: 'button', role: 'menuitem', class: 'op remover', onclick: (e) => { e.stopPropagation(); remover(); } }, 'Tirar da minha lista')] : []));
     capaBox.append(menu);
     botao.setAttribute('aria-expanded', 'true');

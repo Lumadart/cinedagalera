@@ -4,23 +4,13 @@ import { cartaoTitulo, fecharMenus } from '../cartao.js';
 import { casca, esqueleto, avisar, ROTULOS, COR_STATUS, normalizar, CATEGORIAS } from '../ui.js';
 import { dropdown } from '../dropdown.js';
 import { fundoAparencia } from '../aparencia.js';
+import { CATEGORIAS_DEF, PLURAL_CATEGORIAS, ICONE_CATEGORIAS, TEXTO_CATEGORIAS } from '../categorias.js';
 
 // O filtro escolhido fica guardado enquanto a pessoa navega entre telas.
-const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
 const filtro = estado.filtro;
-const ICONE_CAT = { todos: 'dado', filme: 'play', serie: 'grade', anime: 'raio', dorama: 'coracao', reality: 'amigos', documentario: 'busca' };
-const NOME_CAT = { todos: 'Todos os títulos', ...PLURAL };
-const TEXTO_CAT = {
-  todos: 'Tudo o que a galera escolheu, em um só lugar.',
-  filme: 'Para ver em uma sentada só.',
-  serie: 'Para maratonar episódio por episódio.',
-  anime: 'Animações e histórias que a galera ama.',
-  dorama: 'Romance, drama e muita emoção do Oriente.',
-  reality: 'Competição, convivência e muita resenha.',
-  documentario: 'Histórias reais que valem o tempo.'
-};
+const NOME_CAT = { todos: 'Todos os títulos', ...PLURAL_CATEGORIAS };
 // Imagens de fundo do hero: escolhidas no Admin > Aparência. Sem imagem, fica só o degradê.
-const TIPOS_HERO = ['todos', 'filme', 'serie', 'anime', 'dorama', 'reality', 'documentario'];
+const TIPOS_HERO = ['todos', ...CATEGORIAS_DEF.map((c) => c.id)];
 
 export function telaCatalogo({ raiz, ativa }) {
   const filtrosEl = h('div', { class: 'filtros-grupo' });
@@ -29,7 +19,7 @@ export function telaCatalogo({ raiz, ativa }) {
   const avisoEl = h('div', { class: 'estado-vazio', role: 'status' });
   const ordenar = dropdown({
     id: 'ordem', rotulo: 'Ordenar', valor: filtro.ordem, mini: true,
-    opcoes: [['recentes', 'Mais recentes'], ['az', 'A a Z'], ['vistos', 'Mais vistos pela galera']],
+    opcoes: [['recentes', 'Mais recentes'], ['az', 'A a Z'], ['vistos', 'Mais vistos pela comunidade']],
     aoMudar: (e) => { filtro.ordem = e.target.value; desenharGrade(); }
   });
 
@@ -39,7 +29,7 @@ export function telaCatalogo({ raiz, ativa }) {
   const heroContagem = h('span', { class: 'cat-contagem' });
   const hero = h('section', { class: 'cat-hero', 'aria-label': 'Tipo de título' },
     h('div', { class: 'cat-fundos', 'aria-hidden': 'true' }, fundos), h('div', { class: 'cat-veu' }),
-    h('div', { class: 'cat-hero-texto' }, h('span', { class: 'cat-sobre' }, 'Catálogo da galera'), heroTitulo, heroTexto, heroContagem),
+    h('div', { class: 'cat-hero-texto' }, h('span', { class: 'cat-sobre' }, 'Catálogo da comunidade'), heroTitulo, heroTexto, heroContagem),
     h('label', { class: 'seletor cat-ordem' }, h('span', { class: 'sr-only' }, 'Ordenar por'), ordenar));
   const tiposEl = h('nav', { class: 'cat-tipos', 'aria-label': 'Tipo de título' });
 
@@ -52,17 +42,17 @@ export function telaCatalogo({ raiz, ativa }) {
 
   function desenharFiltros() {
     const generos = [...new Set(estado.catalogo.titulos.flatMap((t) => t.generos))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    const categorias = Object.keys(CATEGORIAS).filter((c) => estado.catalogo.titulos.some((t) => t.categoria === c));
+    const categorias = CATEGORIAS_DEF.map((c) => c.id).filter((c) => estado.catalogo.titulos.some((t) => t.categoria === c));
     if (filtro.categoria !== 'todos' && !categorias.includes(filtro.categoria)) filtro.categoria = 'todos';
     const mudar = (campo, valor) => () => { filtro[campo] = valor; desenharFiltros(); desenharGrade(); };
     const total = (c) => c === 'todos' ? estado.catalogo.titulos.length : estado.catalogo.titulos.filter((t) => t.categoria === c).length;
     montar(tiposEl, ['todos', ...categorias].map((c) => h('button', {
       type: 'button', class: 'cat-tipo' + (filtro.categoria === c ? ' ligado' : ''), 'aria-pressed': String(filtro.categoria === c),
       onclick: mudar('categoria', c)
-    }, icone(ICONE_CAT[c], 18), c === 'todos' ? 'Todos' : PLURAL[c], h('span', { class: 'contador' }, String(total(c))))));
+    }, icone(ICONE_CATEGORIAS[c], 18), c === 'todos' ? 'Todos' : PLURAL_CATEGORIAS[c], h('span', { class: 'contador' }, String(total(c))))));
     fundos.forEach((f) => f.classList.toggle('ativo', f.dataset.c === filtro.categoria));
     heroTitulo.textContent = NOME_CAT[filtro.categoria];
-    heroTexto.textContent = TEXTO_CAT[filtro.categoria];
+    heroTexto.textContent = TEXTO_CATEGORIAS[filtro.categoria];
     heroContagem.textContent = `${total(filtro.categoria)} ${total(filtro.categoria) === 1 ? 'título' : 'títulos'}`;
     montar(filtrosEl,
       generos.length ? h('div', { class: 'filtro-linha', role: 'group', 'aria-label': 'Gênero' },

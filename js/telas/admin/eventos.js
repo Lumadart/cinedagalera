@@ -108,8 +108,8 @@ async function desenharEventos({ painel, ativa }) {
         h('div', { class: 'acoes' },
           h('label', { class: 'btn-sec', for: 'ev-imagem' }, icone('editar', 16), 'Escolher imagem'),
           h('button', { type: 'button', class: 'btn-sec', onclick: () => { imagem = null; pintarPrevia(); } }, 'Remover'), arquivo)),
-      h('label', null, 'Sugestões de filmes por pessoa (0 = a galera não sugere)', campo.sugestoes_max),
-      e && e.sugestoes.length ? h('div', null, h('span', { class: 'rotulo' }, `Sugestões da galera (${e.sugestoes.length})`),
+      h('label', null, 'Sugestões de filmes por pessoa (0 = a comunidade não sugere)', campo.sugestoes_max),
+      e && e.sugestoes.length ? h('div', null, h('span', { class: 'rotulo' }, `Sugestões da comunidade (${e.sugestoes.length})`),
         h('div', { class: 'ev-titulos' }, e.sugestoes.map((x) => {
           const t = estado.catalogo.titulos.find((y) => y.id === x.titulo_id), m = estado.catalogo.membros.find((y) => y.id === x.membro_id);
           return h('span', { class: 'chip-titulo' }, (t ? t.nome : '?') + ' · ' + (m ? m.nome.split(' ')[0] : '?'),
@@ -142,7 +142,7 @@ async function desenharEventos({ painel, ativa }) {
       const ev = d.eventos.find((x) => x.id === evento.value);
       const n = ev ? new Set(ev.sugestoes.map((x) => x.titulo_id)).size : 0;
       caixaUsar.hidden = !n;
-      infoSug.textContent = ` Votar nos ${n} filmes sugeridos pela galera para este evento (fecha as sugestões)`;
+      infoSug.textContent = ` Votar nos ${n} filmes sugeridos pela comunidade para este evento (fecha as sugestões)`;
       if (!n) usar.checked = false;
       caixaOpcoes.hidden = usar.checked;
     };

@@ -35,12 +35,12 @@ export function telaEventos({ raiz, ativa }) {
 
     montar(area,
       h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, h('span', { class: 'ico-ouro' }, icone('calendario', 30)), 'Eventos'),
-        h('p', { class: 'suave' }, 'Maratonas, noites temáticas e votações da galera.'))),
+        h('p', { class: 'suave' }, 'Maratonas, noites temáticas e votações da comunidade.'))),
       h('div', { class: 'filtros ev-filtros' }, chip('proximos', 'Em breve', proximos.length), chip('passados', 'Já rolou', passados.length), chip('todos', 'Todos', todos.length)),
       lista.length
         ? h('div', { class: 'ev-lista' }, lista.map((e, i) => linhaEvento(e, membros, filtro !== 'passados' && !jaComecou(e) && i === 0)))
         : h('section', { class: 'ev-vazio' }, icone('calendario', 44), h('h2', null, filtro === 'passados' ? 'Nenhum evento passado' : 'Nenhum evento marcado'),
-          h('p', { class: 'suave' }, 'Quando a galera marcar uma maratona ou noite temática, ela aparece aqui.' + (estado.membro.admin ? ' Crie um em Administração → Eventos.' : ''))),
+          h('p', { class: 'suave' }, 'Quando a comunidade marcar uma maratona ou noite temática, ela aparece aqui.' + (estado.membro.admin ? ' Crie um em Administração → Eventos.' : ''))),
       abertas.length ? h('section', { class: 'bloco-home' },
         h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('check', 20)), 'Votações abertas')),
         h('div', { class: 'lista-votacoes' }, abertas.map((v) => cartaoVotacao(v, refazer)))) : null,

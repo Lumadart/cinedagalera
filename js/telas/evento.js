@@ -13,7 +13,7 @@ export function telaEvento({ raiz, params, ativa }) {
   let subaba = 'votacao', ultimoD = null, exibicoes = {};
   const dataCurta = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' }).replace(' de ', ' ').replace('.', '');
 
-  /** Para cada título: a última vez em que a galera o exibiu em algum evento (programação com horário passado ou evento já começado). */
+  /** Para cada título: a última vez em que a comunidade o exibiu em algum evento (programação com horário passado ou evento já começado). */
   function mapaExibicoes(eventos) {
     const mapa = {}, agora = Date.now();
     eventos.filter((x) => !x.cancelado).forEach((x) => x.titulos.forEach((id) => {

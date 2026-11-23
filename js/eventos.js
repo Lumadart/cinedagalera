@@ -90,7 +90,7 @@ export function seloData(iso) {
     h('small', null, dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')));
 }
 
-/** Última vez em que a galera exibiu o título num evento (horário passado ou evento já começado). null se nunca. */
+/** Última vez em que a comunidade exibiu o título num evento (horário passado ou evento já começado). null se nunca. */
 export function exibicaoDe(eventos, tituloId) {
   let melhor = null;
   eventos.filter((x) => !x.cancelado && x.titulos.includes(tituloId)).forEach((x) => {

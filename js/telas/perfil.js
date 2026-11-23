@@ -94,7 +94,7 @@ export function telaPerfil({ raiz, ativa, params }) {
     const blocoCompat = compat ? h('section', { class: 'card compat', 'aria-label': 'Compatibilidade' },
       h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('coracao', 20)), 'Compatibilidade')),
       compat.pct === null
-        ? h('p', { class: 'suave' }, 'Ainda há poucos títulos marcados para comparar vocês dois. Quanto mais a galera marca, mais isto fica certeiro.')
+        ? h('p', { class: 'suave' }, 'Ainda há poucos títulos marcados para comparar vocês dois. Quanto mais a comunidade marca, mais isto fica certeiro.')
         : [
           h('div', { class: 'compat-topo' },
             h('div', { class: 'compat-anel', style: { '--p': compat.pct } }, h('strong', null, compat.pct + '%')),

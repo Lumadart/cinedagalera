@@ -3,6 +3,7 @@ import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
 import { dropdown } from '../dropdown.js';
 import { fundoAparencia } from '../aparencia.js';
+import { PLURAL_CATEGORIAS, ICONE_CATEGORIAS } from '../categorias.js';
 import { casca, esqueleto, capa, avisar, seguro, CATEGORIAS, rotuloCategoria } from '../ui.js';
 
 // O que a pessoa escolheu fica guardado enquanto o site estiver aberto.
@@ -10,8 +11,8 @@ const VAZIO = { fonte: 'catalogo', categoria: 'todos', genero: '', anoDe: '', an
 const escolha = { ...VAZIO };
 let ultimoId = null;
 
-const ICONE_CAT = { todos: 'dado', filme: 'play', serie: 'grade', anime: 'raio', dorama: 'coracao', reality: 'amigos', documentario: 'busca' };
-const PLURAL = { todos: 'Todos', filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
+const ICONE_CAT = ICONE_CATEGORIAS;
+const PLURAL = { todos: 'Todos', ...PLURAL_CATEGORIAS };
 const sortear = (lista) => lista[Math.floor(Math.random() * lista.length)];
 const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const reduzido = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -163,7 +164,7 @@ export function telaSorteio({ raiz, ativa }) {
     const selDe = dropdown({ rotulo: 'Ano de lançamento, a partir de', valor: escolha.anoDe, opcoes: opAnos, aoMudar: (e) => { escolha.anoDe = e.target.value; fila = []; atualizar(); } });
     const selAte = dropdown({ rotulo: 'Ano de lançamento, até', valor: escolha.anoAte, opcoes: opAnos, aoMudar: (e) => { escolha.anoAte = e.target.value; fila = []; atualizar(); } });
     const selQuem = dropdown({ rotulo: 'Status', valor: escolha.quem, aoMudar: (e) => { escolha.quem = e.target.value; atualizar(); },
-      opcoes: [['qualquer', 'Qualquer status'], ['nao_vi', 'Que eu ainda não vi'], ['quero_ver', 'Da minha lista “quero ver”'], ['ninguem', 'Que ninguém da galera viu']] });
+      opcoes: [['qualquer', 'Qualquer status'], ['nao_vi', 'Que eu ainda não vi'], ['quero_ver', 'Da minha lista “quero ver”'], ['ninguem', 'Que ninguém da comunidade viu']] });
     const estrelas = estrelasMinimas(escolha.nota, (n) => { escolha.nota = n; fila = []; atualizar(); });
     const semVistos = h('input', { type: 'checkbox', checked: escolha.semVistos, onchange: (e) => { escolha.semVistos = e.target.checked; atualizar(); } });
 
@@ -249,7 +250,7 @@ export function telaSorteio({ raiz, ativa }) {
   }
 
   const textoGostos = () => personalizado
-    ? 'Baseado no que a galera mais curte: ' + gostos.join(', ') + '.'
+    ? 'Baseado no que a comunidade mais curte: ' + gostos.join(', ') + '.'
     : (gostos.length ? 'Gênero escolhido: ' + gostos.join(', ') + '.' : 'Mostrando os mais populares.');
 
   function adicionar(t) {

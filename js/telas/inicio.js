@@ -1,3 +1,4 @@
+import { PLURAL_CATEGORIAS } from '../categorias.js';
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo, achaTitulo } from '../estado.js';
 import { chamar } from '../api.js';
@@ -7,14 +8,14 @@ import { dataLonga, contagem, jaComecou, haQuanto } from '../datas.js';
 import { casca, esqueleto, avatar, capa, fundoImg, avisar, COR_STATUS, duracaoTitulo } from '../ui.js';
 
 const VERBO = { visto: 'viu', assistindo: 'está assistindo', quero_ver: 'quer ver' };
-const PLURAL = { filme: 'Filmes', serie: 'Séries', anime: 'Animes', dorama: 'Doramas', reality: 'Reality', documentario: 'Documentários' };
+const PLURAL = PLURAL_CATEGORIAS;
 let slideAtual = 0; // lembra o destaque ao redesenhar a tela
 
 export function telaInicio({ raiz, ativa }) {
   const conteudo = h('div', { class: 'inicio' }, esqueleto('grade', 6));
   montar(raiz, casca('inicio', conteudo));
   let timer = null;
-  const bannerEvento = h('a', { class: 'aviso-evento', hidden: true, href: '#/eventos', 'aria-label': 'Evento da galera' });
+  const bannerEvento = h('a', { class: 'aviso-evento', hidden: true, href: '#/eventos', 'aria-label': 'Evento da comunidade' });
   let dadosEvento = null; // { e, vt } do último carregamento: o card é redesenhado quando o catálogo (com os membros) chega
   function pintarEvento() {
     if (!dadosEvento) return;
@@ -88,7 +89,7 @@ export function telaInicio({ raiz, ativa }) {
       return h('section', { class: 'hero vazio' },
         h('div', { class: 'slide ativo' }, h('div', { class: 'hero-texto' },
           h('h1', null, 'Descubra, compartilhe e monte ', h('span', { class: 'ouro' }, 'sua lista!')),
-          h('p', { class: 'hero-sinopse' }, 'Busque um filme, série, anime ou dorama e indique o primeiro título da galera.'),
+          h('p', { class: 'hero-sinopse' }, 'Busque um filme, série, anime ou dorama e indique o primeiro título da comunidade.'),
           h('a', { class: 'btn-primario', href: '#/adicionar' }, icone('busca', 18), 'Adicionar título'))));
     }
     if (slideAtual >= slides.length) slideAtual = 0;
@@ -153,12 +154,12 @@ export function telaInicio({ raiz, ativa }) {
     titulos.forEach((t) => { if (t.criado_em && quem[t.adicionado_por]) eventos.push({ quando: t.criado_em, m: quem[t.adicionado_por], t, txt: 'indicou', cor: 'var(--ouro)' }); });
     eventos.sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
     return h('section', { class: 'card lateral' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('raio', 20)), 'Atividade da galera')),
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('raio', 20)), 'Atividade da comunidade')),
       eventos.length ? h('ul', { class: 'atividade' }, eventos.slice(0, 8).map((e) =>
         h('li', null, avatar(e.m, { tamanho: 36, cor: e.cor }),
           h('div', { class: 'at-texto' }, h('span', null, h('strong', null, e.m.nome.split(' ')[0]), ' ' + e.txt + ' ', h('a', { href: '#/titulo/' + e.t.id }, e.t.nome)),
             h('span', { class: 'suave pequeno' }, haQuanto(e.quando))),
           h('a', { class: 'at-capa', href: '#/titulo/' + e.t.id, 'aria-label': e.t.nome, tabindex: '-1' }, capa(e.t)))))
-        : h('p', { class: 'suave' }, 'Quando a galera marcar títulos, a atividade aparece aqui.'));
+        : h('p', { class: 'suave' }, 'Quando a comunidade marcar títulos, a atividade aparece aqui.'));
   }
 }
