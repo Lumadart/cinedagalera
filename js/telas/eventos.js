@@ -3,7 +3,7 @@ import { estado, carregarCatalogo, achaTitulo } from '../estado.js';
 import { casca, esqueleto, avisar, capa } from '../ui.js';
 import { haQuanto, dataLonga, contagem, jaComecou } from '../datas.js';
 import { chamar } from '../api.js';
-import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, seloData, diaLongo, hhmm, TIPOS_EVENTO } from '../eventos.js';
+import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, seloData, diaLongo, hhmm, TIPOS_EVENTO, faseRotulo } from '../eventos.js';
 
 let filtro = 'proximos';   // lembrado enquanto o site estiver aberto
 
@@ -56,7 +56,7 @@ export function telaEventos({ raiz, ativa }) {
     return h('a', { class: 'ev-item' + (proximo ? ' proximo' : ''), href: '#/evento/' + e.id },
       h('div', { class: 'ev-item-capa' }, colagem(e), seloData(e.inicio)),
       h('div', { class: 'ev-item-corpo' },
-        h('div', { class: 'ev-linha' }, proximo ? h('span', { class: 'ev-etiqueta' }, 'Próximo') : null, h('span', { class: 'pill-tipo fixo' }, TIPOS_EVENTO[e.tipo] || 'Evento'), e.tema ? h('span', { class: 'suave pequeno' }, e.tema) : null),
+        h('div', { class: 'ev-linha' }, proximo ? h('span', { class: 'ev-etiqueta' }, 'Próximo') : null, faseRotulo(e) ? h('span', { class: 'ev-fase-pill f-' + e.fase }, faseRotulo(e)) : null, h('span', { class: 'pill-tipo fixo' }, TIPOS_EVENTO[e.tipo] || 'Evento'), e.tema ? h('span', { class: 'suave pequeno' }, e.tema) : null),
         h('h2', null, e.nome),
         e.descricao ? h('p', { class: 'suave ev-item-desc' }, e.descricao) : null,
         h('p', { class: 'ev-item-meta' }, icone('calendario', 16), diaLongo(e.inicio) + ' · ' + hhmm(e.inicio),

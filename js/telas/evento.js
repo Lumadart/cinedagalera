@@ -4,13 +4,13 @@ import { casca, esqueleto, avisar, capa, avatar, seguro, suave, fundoImg } from 
 import { jaComecou } from '../datas.js';
 import { buscaTitulos } from '../seletor.js';
 import { chamar } from '../api.js';
-import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, programacao, relogio, diaLongo, hhmm, TIPOS_EVENTO } from '../eventos.js';
+import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, programacao, relogio, diaLongo, hhmm, TIPOS_EVENTO, FASES, passosDoEvento, programaPorDia, textoEpisodios } from '../eventos.js';
 
 /** Página de um evento: hero, abas (Filmes / Participantes), votação, programação e filmes já escolhidos. */
 export function telaEvento({ raiz, params, ativa }) {
   const area = h('div', { class: 'evento-pag' }, esqueleto('lista', 3));
   montar(raiz, casca('eventos', area));
-  let subaba = 'votacao', ultimoD = null, exibicoes = {};
+  let subaba = null, ultimoD = null, exibicoes = {};
   const dataCurta = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' }).replace(' de ', ' ').replace('.', '');
 
   /** Para cada título: a última vez em que a comunidade o exibiu em algum evento (programação com horário passado ou evento já começado). */
@@ -52,20 +52,38 @@ export function telaEvento({ raiz, params, ativa }) {
     const vao = quemVai(e, membros, 'vou', 5);
     const talvez = Object.values(e.presencas || {}).filter((r) => r === 'talvez').length;
 
-    montar(area, voltar, hero(e, membros, vao, talvez, refazerLocal), filmes(e, votacao, membros));
+    if (!subaba) subaba = e.fase === 'votacao' || e.fase === 'empate' ? 'votacao' : e.fase === 'sugestoes' ? 'sugeridos' : (e.titulos.length ? 'selecionados' : 'sugeridos');
+    montar(area, voltar, hero(e, membros, vao, talvez, refazerLocal), faixaFase(e), filmes(e, votacao, membros));
 
     function filmes(ev, vt, ms) {
       const selecionados = programacao(ev).map((x) => ({ ...x, t: achaTitulo(x.titulo_id) })).filter((x) => x.t);
       return h('div', { class: 'ev-filmes' },
         h('div', { class: 'ev-grade' },
           painelVotacao(ev, vt, ms, selecionados),
-          h('aside', { class: 'ev-lateral' }, linhaTempo(selecionados))),
+          h('aside', { class: 'ev-lateral' }, linhaTempo(selecionados, ev))),
         selecionados.length ? h('section', { class: 'ev-sec' },
           h('h2', null, `Filmes já selecionados (${selecionados.length})`),
           h('p', { class: 'suave pequeno' }, 'Estes títulos já estão confirmados para o evento.'),
           h('div', { class: 'ev-faixa' }, selecionados.map((x, i) => h('a', { href: '#/titulo/' + x.t.id, class: 'ev-sel' },
             h('span', { class: 'ev-sel-num' }, String(i + 1)), capa(x.t), h('strong', null, x.t.nome), h('small', { class: 'suave' }, x.t.ano || ''), exibido(x.t.id)))) ) : null);
     }
+  }
+
+  /** Passo a passo (só eventos com votação) e o aviso do que fazer agora. */
+  function faixaFase(e) {
+    const passos = passosDoEvento(e);
+    const info = FASES[e.fase] || FASES.legado;
+    if (!passos.length && !info[0]) return null;
+    const c = e.cotas || {};
+    let extra = '';
+    if (e.fase === 'confirmacao') extra = ` As sugestões abrem em ${dataCurta(e.sug_ini)}.`;
+    else if (e.fase === 'sugestoes') extra = ` Cada pessoa pode sugerir ${c.sugestoes_por_pessoa} ${c.sugestoes_por_pessoa === 1 ? 'título' : 'títulos'}; vão ${e.vagas} ${e.vagas === 1 ? 'título' : 'títulos'} ao evento. Até ${dataCurta(e.sug_fim)} às ${hhmm(e.sug_fim)}.`;
+    else if (e.fase === 'votacao') extra = ` Você tem ${c.votos_por_pessoa} ${c.votos_por_pessoa === 1 ? 'voto' : 'votos'}. Até ${dataCurta(e.vot_fim)} às ${hhmm(e.vot_fim)}.`;
+    return h('section', { class: 'ev-fases' },
+      passos.length ? h('ol', { class: 'ev-passos' }, passos.map((p, i) => h('li', { class: 'ev-passo ' + p.estado },
+        h('span', { class: 'ev-passo-bola' }, p.estado === 'feito' ? icone('check', 14) : String(i + 1)),
+        h('strong', null, p.nome), p.data ? h('small', { class: 'suave' }, dataCurta(p.data)) : null))) : null,
+      info[0] ? h('p', { class: 'ev-fase-txt' }, h('b', null, info[0] + '. '), info[1] + extra) : null);
   }
 
   /** A imagem do evento; sem ela, a capa do primeiro filme; sem filmes, a colagem padrão. */
@@ -173,12 +191,13 @@ export function telaEvento({ raiz, params, ativa }) {
       ? selecionados.map((x, i) => linhaFilme({ pos: i + 1, t: x.t, extra: x.inicio ? 'Começa às ' + hhmm(x.inicio) : 'Horário a definir', votos: null, acao: h('span', { class: 'ev-selo-ok' }, 'Selecionado') }))
       : [vazio('Ainda não há filmes selecionados.')];
 
-    const partes = [
+    const todas = [
       ['votacao', 'Em votação', vt ? vt.opcoes.length : 0, linhasVotacao],
       ['sugeridos', 'Mais sugeridos', 0, linhasSugeridos],
       ['selecionados', 'Já selecionados', selecionados.length, linhasSelecionados]
     ];
-    const atual = partes.find((p) => p[0] === subaba) || partes[0];
+    const partes = todas.filter(([id]) => e.modo === 'programado' ? id === 'selecionados' : (id !== 'votacao' || vt) && (id !== 'sugeridos' || e.modo === 'votacao' || e.sugestoes.length || e.sugestoes_max > 0));
+    const atual = partes.find((p) => p[0] === subaba) || partes[partes.length - 1];
     const busca = e.sugestoes_max > 0 && e.sugestoes_abertas && minhas.length < e.sugestoes_max ? buscaTitulos({
       placeholder: 'Sugira um filme ou série do catálogo…', excluir: () => minhas.map((x) => x.titulo_id),
       aoEscolher: async (t) => {
@@ -189,16 +208,16 @@ export function telaEvento({ raiz, params, ativa }) {
     }) : null;
 
     return h('section', { class: 'ev-painel' },
-      h('div', { class: 'ev-painel-topo' }, h('h2', null, 'Sugira e vote nos filmes')),
+      h('div', { class: 'ev-painel-topo' }, h('h2', null, e.modo === 'programado' ? 'Filmes do evento' : 'Sugira e vote nos filmes')),
       e.sugestoes_max > 0 ? h('p', { class: 'suave pequeno' },
         e.sugestoes_abertas ? `Ajude a escolher o que vai passar! Você usou ${minhas.length} de ${e.sugestoes_max} sugestões.` : 'As sugestões estão encerradas.') : null,
       busca ? busca.el : null,
       e.sugestoes_abertas && e.sugestoes_max > 0 && minhas.length >= e.sugestoes_max ? h('p', { class: 'suave pequeno' }, 'Você já usou todas as suas sugestões. Remova uma para trocar.') : null,
       msg,
-      h('div', { class: 'ev-subabas', role: 'tablist' }, partes.map(([id, texto, n]) => h('button', {
+      partes.length > 1 ? h('div', { class: 'ev-subabas', role: 'tablist' }, partes.map(([id, texto, n]) => h('button', {
         type: 'button', role: 'tab', class: 'ev-subaba' + (subaba === id ? ' ligada' : ''), 'aria-selected': String(subaba === id),
         onclick: () => { subaba = id; desenhar(ultimoD); }
-      }, texto, n ? h('span', { class: 'contador' }, String(n)) : null))),
+      }, texto, n ? h('span', { class: 'contador' }, String(n)) : null))) : null,
       h('div', { class: 'ev-linhas' }, atual[3]()));
 
   }
@@ -216,7 +235,22 @@ export function telaEvento({ raiz, params, ativa }) {
   }
 
   // ---------- programação em linha do tempo ----------
-  function linhaTempo(itens) {
+  function linhaTempo(itens, e) {
+    const dias = programaPorDia(e);
+    if (dias.length) {
+      return h('section', { class: 'ev-painel ev-prog' }, h('h2', null, 'Programação'),
+        dias.map((dia) => h('div', { class: 'ev-pdia' },
+          h('h3', null, diaLongo(dia.data + 'T12:00:00')),
+          h('ol', { class: 'ev-tempo' }, dia.itens.map((x, i) => {
+            const t = achaTitulo(x.t); if (!t) return null;
+            const ep = textoEpisodios(x);
+            return h('li', null,
+              h('span', { class: 'ev-hora' }, hhmm(x.inicio)),
+              h('a', { href: '#/titulo/' + t.id, class: 'ev-prog-item' }, h('span', { class: 'ev-mini' }, capa(t)),
+                h('span', { class: 'ev-fn' }, h('strong', null, t.nome), h('small', { class: 'suave' }, [ep, 'até ' + hhmm(x.fim)].filter(Boolean).join(' · ')),
+                  i < dia.itens.length - 1 && x.pausa ? h('small', { class: 'suave' }, `intervalo de ${x.pausa} min depois`) : null)));
+          })))));
+    }
     return h('section', { class: 'ev-painel ev-prog' },
       h('h2', null, 'Programação'),
       itens.length ? h('ol', { class: 'ev-tempo' }, itens.map((x) => h('li', null,

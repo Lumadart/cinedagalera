@@ -99,3 +99,39 @@ export function exibicaoDe(eventos, tituloId) {
   });
   return melhor;
 }
+
+// ---------- fases do evento ----------
+export const FASES = {
+  confirmacao: ['Confirme presença', 'Quem confirma ajuda a definir quantas sugestões cada pessoa terá.'],
+  sugestoes: ['Sugestões abertas', 'Sugira filmes e séries do catálogo para o evento.'],
+  votacao: ['Votação aberta', 'Escolha o que vai passar entre os títulos sugeridos.'],
+  empate: ['Empate', 'Deu empate na última vaga: os admins vão decidir.'],
+  aguardando: ['Tudo definido', 'Os títulos já foram escolhidos. Falta só chegar o dia!'],
+  sem_sugestoes: ['Sem sugestões', 'Ninguém sugeriu títulos; os admins vão montar a programação.'],
+  programado: ['Programação definida', 'Os títulos e horários já estão decididos.'],
+  ao_vivo: ['Rolando agora', 'O evento já começou. Bom filme!'],
+  encerrado: ['Encerrado', 'Este evento já aconteceu.'],
+  cancelado: ['Cancelado', ''],
+  legado: ['', '']
+};
+export const faseRotulo = (e) => (FASES[e.fase] || FASES.legado)[0];
+
+/** Linha do tempo das fases de um evento com votação (para o "passo a passo" da página). */
+export function passosDoEvento(e) {
+  if (e.modo !== 'votacao') return [];
+  const ordem = ['confirmacao', 'sugestoes', 'votacao', 'aguardando', 'ao_vivo'];
+  const nomes = { confirmacao: 'Confirmação', sugestoes: 'Sugestões', votacao: 'Votação', aguardando: 'Definido', ao_vivo: 'Evento' };
+  const f = e.fase === 'empate' ? 'votacao' : e.fase === 'sem_sugestoes' ? 'aguardando' : e.fase === 'encerrado' ? 'ao_vivo' : e.fase;
+  const atual = Math.max(0, ordem.indexOf(f));
+  const datas = { confirmacao: '', sugestoes: e.sug_ini, votacao: e.sug_fim, aguardando: e.vot_fim, ao_vivo: e.inicio };
+  return ordem.map((id, i) => ({ id, nome: nomes[id], data: datas[id], estado: i < atual || e.fase === 'encerrado' ? 'feito' : i === atual ? 'atual' : 'depois' }));
+}
+
+/** Programação por dia → lista de { data, inicio, itens:[{ t, de, ate, temp, pausa, inicio, fim }] }; vazia se o evento não tem. */
+export function programaPorDia(e) {
+  return e.programacao && Array.isArray(e.programacao.dias) ? e.programacao.dias : [];
+}
+export function textoEpisodios(x) {
+  if (x.de === undefined) return '';
+  return (x.temp ? `T${x.temp} · ` : '') + (x.de === x.ate ? `ep. ${x.de}` : `eps. ${x.de}–${x.ate}`);
+}

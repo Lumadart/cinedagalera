@@ -1358,3 +1358,43 @@ button.resp.salvando::after { margin-left: 6px; }
 .av-card .link-discreto { justify-self: start; font-size: .82rem; }
 /* Abas de categoria: com muitas categorias, as linhas se esticam e preenchem a largura toda */
 .cat-tipo { flex: 1 1 auto; justify-content: center; padding: 11px 16px; }
+
+/* ---- fases do evento ---- */
+.ev-fases { display: grid; gap: 12px; padding: 18px 22px; background: var(--card); border: 1px solid var(--borda); border-radius: 18px; margin-bottom: 18px; }
+.ev-passos { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.ev-passo { flex: 1 1 120px; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: #ffffff08; border: 1px solid transparent; color: var(--suave); }
+.ev-passo small { grid-column: 2; }
+.ev-passo-bola { grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #ffffff14; font-size: .8rem; font-weight: 700; }
+.ev-passo.feito .ev-passo-bola { background: var(--ouro); color: #231b20; }
+.ev-passo.atual { border-color: var(--ouro); color: var(--texto, #fff); background: #F5B94214; }
+.ev-passo.atual .ev-passo-bola { background: var(--ouro); color: #231b20; }
+.ev-fase-txt { margin: 0; }
+.ev-fase-pill { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #F5B94222; color: var(--ouro); }
+.ev-fase-pill.f-votacao, .ev-fase-pill.f-empate { background: var(--ouro); color: #231b20; }
+.ev-fase-pill.f-encerrado, .ev-fase-pill.f-cancelado { background: #ffffff14; color: var(--suave); }
+.ev-pdia + .ev-pdia { margin-top: 10px; }
+.ev-pdia h3 { margin: 0 0 4px; font-size: 1rem; text-transform: none; color: var(--ouro); }
+/* editor de programação */
+.pg-dia { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--borda); border-radius: 14px; background: #ffffff06; }
+.pg-dia-topo { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.pg-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; padding: 8px 10px; border-radius: 10px; background: #ffffff08; }
+.pg-item .pg-nome { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.pg-item .pg-nome strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-item .pg-ctrl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.pg-item input[type=number] { width: 70px; }
+.pg-hora { color: var(--ouro); font-weight: 700; font-variant-numeric: tabular-nums; }
+.pg-resumo { font-size: .85rem; }
+.ev-modos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.ev-modo { text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--borda); background: #ffffff06; color: inherit; display: grid; gap: 4px; }
+.ev-modo.ligada { border-color: var(--ouro); background: #F5B94214; }
+.ev-modo small { color: var(--suave); }
+.fases-adm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.adm-ev-info .ev-fase-pill { align-self: flex-start; }
+.pg-item { grid-template-columns: 1fr; }
+.pg-item .pg-ctrl { justify-content: flex-start; }
+.pg-item .pg-nome strong { white-space: normal; }
+.pg-item .mini-capa { width: 32px; flex: none; }
+.pg-ctrl label { display: flex; gap: 6px; align-items: center; }
+.ev-pdia { display: block; min-width: 0; }
+.ev-pdia .ev-tempo::before { left: 68px; }
+.ev-pdia h3::first-letter { text-transform: uppercase; }
