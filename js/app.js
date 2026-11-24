@@ -1,0 +1,114 @@
+import { chamar } from './api.js';
+import { estado, carregarCatalogo, limparCatalogo } from './estado.js';
+import { lerToken } from './sessao.js';
+import { h, montar } from './dom.js';
+import { avisar } from './ui.js';
+import { carregarAparencia } from './aparencia.js';
+import { telaLogin } from './telas/login.js';
+import { telaInicio } from './telas/inicio.js';
+import { telaCatalogo } from './telas/catalogo.js';
+import { telaTitulo } from './telas/titulo.js';
+import { telaPerfil } from './telas/perfil.js';
+
+const raiz = document.getElementById('app');
+let versao = 0; // cada troca de tela invalida respostas atrasadas da tela anterior
+
+function rotaAtual() {
+  const partes = location.hash.replace(/^#/, '').split('/').filter(Boolean);
+  if (partes[0] === 'entrar') return { nome: 'entrar' };
+  if (partes[0] === 'convite') return { nome: 'entrar', convite: (partes[1] || '').slice(0, 20) };   // link de convite: #/convite/CODIGO
+  if (partes[0] === 'perfil' && partes[1] === 'editar') return { nome: 'editar' };
+  if (partes[0] === 'perfil' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'perfil', id: partes[1] };
+  if (partes[0] === 'perfil') return { nome: 'perfil', id: null };
+  if (partes[0] === 'amigos') return { nome: 'amigos' };
+  if (partes[0] === 'catalogo') return { nome: 'catalogo' };
+  if (partes[0] === 'adicionar') return { nome: 'adicionar' };
+  if (partes[0] === 'eventos') return { nome: 'eventos' };
+  if (partes[0] === 'evento' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'evento', id: partes[1] };
+  if (partes[0] === 'sorteio') return { nome: 'sorteio' };
+  if (partes[0] === 'admin') return { nome: 'admin' };
+  if (partes[0] === 'titulo' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'titulo', id: partes[1] };
+  return { nome: 'inicio' };
+}
+
+// Telas usadas com menos frequência só são baixadas quando alguém abre (a primeira abertura é mais rápida).
+const SOB_DEMANDA = {
+  editar: () => import('./telas/editar-perfil.js').then((m) => m.telaEditarPerfil),
+  amigos: () => import('./telas/amigos.js').then((m) => m.telaAmigos),
+  admin: () => import('./telas/admin.js').then((m) => m.telaAdmin),
+  eventos: () => import('./telas/eventos.js').then((m) => m.telaEventos),
+  evento: () => import('./telas/evento.js').then((m) => m.telaEvento),
+  sorteio: () => import('./telas/sorteio.js').then((m) => m.telaSorteio),
+  adicionar: () => import('./telas/adicionar.js').then((m) => m.telaAdicionar)
+};
+const TELAS = { perfil: telaPerfil, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo };
+const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', evento: 'Evento', sorteio: 'Sorteio' };
+
+async function rotear() {
+  const rota = rotaAtual();
+  if (!estado.membro && rota.nome !== 'entrar') { location.replace('#/entrar'); return; }
+  if (estado.membro && rota.nome === 'entrar') { location.replace('#/'); return; }
+
+  const minha = ++versao;
+  document.title = TITULOS[rota.nome] + ' · Cine Arkham';
+  window.scrollTo(0, 0);
+  let tela = TELAS[rota.nome];
+  if (!tela) {
+    try { tela = TELAS[rota.nome] = await SOB_DEMANDA[rota.nome](); }
+    catch (_) {
+      if (minha !== versao) return;
+      montar(raiz, h('div', { class: 'estado-vazio tela-cheia' }, h('p', { class: 'erro' }, 'Não foi possível carregar esta página. Verifique a internet.'),
+        h('button', { type: 'button', class: 'btn-primario', onclick: () => location.reload() }, 'Tentar de novo')));
+      return;
+    }
+    if (minha !== versao) return; // a pessoa já foi para outra tela enquanto baixava
+  }
+  tela({ raiz, params: rota, ativa: () => minha === versao });
+  const principal = document.getElementById('conteudo');
+  if (principal) principal.focus({ preventScroll: true });
+}
+
+function sessaoExpirou() {
+  estado.membro = null;
+  limparCatalogo();
+  avisar('Sua sessão expirou. Entre novamente.', 'erro');
+  if (location.hash !== '#/entrar') location.hash = '#/entrar';
+  else rotear();
+}
+
+const MOMENTO_INICIAL = performance.now();
+
+/** Some com a tela de carregamento (depois de um tempo mínimo, para não piscar). */
+function esconderSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  const espera = Math.max(0, 1100 - (performance.now() - MOMENTO_INICIAL));
+  setTimeout(() => {
+    splash.classList.add('saindo');
+    setTimeout(() => splash.remove(), 700);
+  }, espera);
+}
+
+async function iniciar() {
+  carregarAparencia(); // imagens dos heros: pública, vai em paralelo com o resto
+  if (lerToken()) {
+    try {
+      carregarCatalogo().catch(() => {}); // em paralelo com o "eu", para a primeira tela chegar mais rápido
+      estado.membro = (await chamar('eu')).membro;
+    } catch (e) {
+      if (e.codigo !== 'sessao') {
+        montar(raiz, h('div', { class: 'estado-vazio tela-cheia' },
+          h('p', { class: 'erro' }, e.message),
+          h('button', { type: 'button', class: 'btn-primario', onclick: () => location.reload() }, 'Tentar de novo')));
+        esconderSplash();
+        return;
+      }
+    }
+  }
+  window.addEventListener('hashchange', rotear);
+  window.addEventListener('sessao-expirada', sessaoExpirou);
+  rotear();
+  esconderSplash();
+}
+
+iniciar();
