@@ -524,19 +524,7 @@ textarea { scrollbar-width: thin; }
   .img-suave { opacity: 1; }
 }
 
-/* badges */
-.badges-resumo { margin-bottom: 18px; }
-.badges-grupo { margin-bottom: 26px; }
-.badges-grupo h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--suave); margin-bottom: 12px; }
-.badges-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-.badge-card { display: flex; gap: 16px; align-items: center; background: var(--card); border: 1px solid var(--borda); border-radius: 18px; padding: 16px; transition: transform .2s, border-color .2s, box-shadow .2s; }
-.badge-card.tem { border-color: #F5B94255; }
-.badge-card:hover { transform: translateY(-3px); border-color: var(--ouro); box-shadow: 0 10px 24px #0007; }
-.badge-card:not(.tem) { opacity: .78; }
-.badge-card.em-breve { opacity: .55; }
-.badge-texto { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.badge-texto strong { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.badge-texto p { color: var(--suave); font-size: .82rem; line-height: 1.35; }
+/* medalhas: ver o bloco no fim deste arquivo */
 .nivel { font-size: .68rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: 99px; color: #2A1500; }
 .nivel-1 { background: #C98B5A; } .nivel-2 { background: #C9CCD8; } .nivel-3 { background: #F5B942; }
 .badge-estado { font-size: .78rem; color: var(--suave); margin-top: 3px; }
@@ -545,17 +533,6 @@ textarea { scrollbar-width: thin; }
 .badge-prog small { color: var(--suave); font-size: .75rem; }
 .barra-badge { height: 6px; background: var(--fundo); border-radius: 99px; overflow: hidden; }
 .barra-badge span { display: block; height: 100%; background: linear-gradient(90deg, #C98B5A, var(--ouro)); border-radius: 99px; transition: width .6s ease; }
-.medalha { position: relative; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--cor-medalha);
-  background: radial-gradient(circle at 30% 25%, #ffffff22, transparent 55%), var(--card2); border: 3px solid var(--cor-medalha);
-  box-shadow: inset 0 0 0 4px var(--card), 0 0 18px color-mix(in srgb, var(--cor-medalha) 35%, transparent); }
-.medalha.bloqueada { box-shadow: inset 0 0 0 4px var(--card); filter: grayscale(.6); }
-.medalha.com-arte { border: none; background: none; box-shadow: none; }
-.medalha.com-arte .medalha-ico { display: none; }
-.medalha-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.badge-card:hover .medalha { animation: balanca .6s ease; }
-@keyframes balanca { 25% { transform: rotate(-8deg) scale(1.06); } 60% { transform: rotate(6deg) scale(1.06); } 100% { transform: none; } }
-
-.medalha.com-arte { box-shadow: none; filter: none; }
 .medalha.bloqueada.com-arte .medalha-img { filter: grayscale(1) brightness(.55); opacity: .65; }
 .medalha-img { animation: entra .4s ease both; }
 .badge-card.tem .medalha.com-arte { filter: drop-shadow(0 4px 10px #0008); }
@@ -911,9 +888,6 @@ button.resp.salvando::after { margin-left: 6px; }
 .aval-corpo { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .aval-nome { color: var(--texto); font-weight: 700; text-decoration: none; } .aval-nome:hover { color: var(--ouro); }
 .aval-texto { margin: 2px 0; font-size: .92rem; color: var(--suave); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.conquistas-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 16px 8px; margin-top: 10px; }
-.conquista { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
-.conquista strong { font-size: .85rem; line-height: 1.2; }
 .generos-fav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .generos-fav .genero { display: inline-flex; gap: 6px; align-items: baseline; }
 .generos-fav .genero small { color: var(--suave); font-size: .72rem; }
@@ -1459,50 +1433,87 @@ button.resp.salvando::after { margin-left: 6px; }
 .exibido-adm input[type=date] { width: auto; padding: 5px 10px; font-size: .85rem; }
 .exibido-adm .btn-sec { padding: 5px 12px; font-size: .85rem; }
 
-/* medalhas (tela do perfil) */
-.perfil-medalhas { padding: 22px; margin-top: 22px; }
-.medalhas { display: flex; flex-direction: column; gap: 18px; }
+/* medalhas */
+.barra-badge { height: 6px; background: var(--fundo); border-radius: 99px; overflow: hidden; }
+.barra-badge span { display: block; height: 100%; background: linear-gradient(90deg, #C98B5A, var(--ouro)); border-radius: 99px; transition: width .6s ease; }
+
+/* Espaço da imagem da medalha: só a moldura; a arte (img/medalhas/<chave>-<nível>.png ou enviada pelo Admin) aparece dentro dela. */
+.med-slot { position: relative; flex: none; width: var(--tam, 88px); height: var(--tam, 88px); border-radius: 14px; background: var(--card); border: 1px solid var(--borda2); overflow: hidden; }
+.med-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .3s; }
+.med-slot.com-arte { border-color: transparent; background: none; overflow: visible; }
+.med-slot.com-arte img { opacity: 1; }
+.med-slot.bloqueada.com-arte img { filter: grayscale(1) brightness(.5); opacity: .55; }
+.med-slot.tem.com-arte img { filter: drop-shadow(0 4px 10px #0008); }
+
+.med-pagina { display: flex; flex-direction: column; gap: 18px; }
 .med-topo { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .med-total { font-size: 1.9rem; color: var(--ouro); line-height: 1; }
 .med-barra { flex: 1; min-width: 160px; height: 8px; }
 .med-contagem { margin-left: 8px; font-size: .72rem; color: var(--suave); font-weight: 500; }
 .aba.ligada .med-contagem { color: var(--ouro); }
-.medalhas .abas-linha { overflow-x: auto; margin-bottom: 0; }
+.med-pagina .abas-linha { overflow-x: auto; margin-bottom: 0; }
 .med-filtros { display: flex; gap: 8px; flex-wrap: wrap; }
 .med-filtros .chip { padding: 5px 14px; font-size: .85rem; }
 .med-secao { display: flex; flex-direction: column; gap: 12px; }
 .med-secao-topo { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
 .med-secao-topo h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--suave); }
-.med-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; align-items: start; }
-.med-card { display: flex; gap: 16px; align-items: flex-start; background: var(--card2); border: 1px solid var(--borda); border-radius: 16px; padding: 14px 16px; transition: border-color .2s, transform .2s; }
-.med-card.tem { border-color: #F5B94244; }
+
+/* trilha: cabeçalho + todos os níveis lado a lado */
+.med-trilha-card { background: var(--card); border: 1px solid var(--borda); border-radius: 18px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+.med-trilha-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; }
+.med-trilha-topo strong { font-size: 1.05rem; }
+.med-trilha-topo small { color: var(--suave); font-size: .82rem; }
+.med-niveis { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; }
+.med-nivel { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 12px 8px; border-radius: 14px; background: var(--card2); border: 1px solid var(--borda); }
+.med-nivel.tem { border-color: #F5B94255; }
+.med-nivel .med-slot { --tam: 96px; }
+.med-nivel-num { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--suave); }
+.med-nivel strong { font-size: .9rem; line-height: 1.2; }
+.med-nivel:not(.tem) strong { color: var(--suave); }
+.med-nivel small { color: var(--suave); font-size: .76rem; line-height: 1.3; }
+.med-nivel .feito { color: var(--ouro); font-weight: 600; }
+
+/* única, disputada, secreta e de evento: uma medalha por cartão */
+.med-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+.med-card { display: flex; gap: 16px; align-items: flex-start; background: var(--card); border: 1px solid var(--borda); border-radius: 18px; padding: 16px; }
+.med-card.tem { border-color: #F5B94255; }
 .med-card:not(.tem) .med-nome { color: var(--suave); }
-.med-card:hover { border-color: #F5B94288; transform: translateY(-2px); }
 .med-texto { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.med-trilha { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); line-height: 1.3; }
 .med-nome { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 1rem; line-height: 1.25; }
 .med-desc { color: var(--suave); font-size: .84rem; line-height: 1.4; }
-.med-prog { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
-.med-prog small, .med-dono { font-size: .8rem; color: var(--suave); }
+.med-dono, .med-quem { font-size: .8rem; color: var(--suave); }
 .med-dono b { color: var(--ouro); }
 .med-dono a { color: var(--texto); font-weight: 600; text-decoration: none; } .med-dono a:hover { color: var(--ouro); }
-.med-niveis { margin-top: 4px; }
-.med-niveis summary { cursor: pointer; font-size: .78rem; color: var(--suave); width: fit-content; list-style: none; }
-.med-niveis summary::-webkit-details-marker { display: none; }
-.med-niveis summary::before { content: '▸ '; } .med-niveis[open] summary::before { content: '▾ '; }
-.med-niveis ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
-.med-niveis li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: .84rem; color: var(--suave); }
-.med-niveis li.feito { color: var(--texto); }
-.med-niveis li small { font-size: .74rem; }
-.med-pip { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--card); border: 1px solid var(--borda2); font-size: .7rem; }
-.med-niveis li.feito .med-pip { background: var(--ouro); border-color: var(--ouro); color: #2A1500; }
-.med-ocultas { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.med-oculta { display: flex; align-items: center; opacity: .75; }
-.med-oculta span { display: none; }
 .med-vazio { padding: 18px 0; }
-.medalha.lendaria { box-shadow: inset 0 0 0 4px var(--card), 0 0 22px #F5B94288; }
-@media (max-width: 700px) { .med-grade { grid-template-columns: minmax(0, 1fr); } .perfil-medalhas { padding: 16px; } }
+.badge-estado { font-size: .78rem; color: var(--suave); margin-top: 3px; }
+.badge-estado.ouro { color: var(--ouro); }
+
+/* perfil: só as medalhas que a pessoa tem */
+.perfil-medalhas { padding: 22px; margin-top: 22px; }
+.perfil-med-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 16px 10px; margin-top: 12px; }
+.perfil-med { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; text-decoration: none; color: inherit; }
+.perfil-med .med-slot { --tam: 84px; }
+.perfil-med strong { font-size: .84rem; line-height: 1.2; }
+.perfil-med small { color: var(--suave); font-size: .72rem; }
+.perfil-med-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+
+/* admin */
 .adm-filtros { display: grid; grid-template-columns: minmax(200px, 1fr) auto auto; gap: 10px; align-items: center; margin: 14px 0 8px; }
 .lista-adm .ver-mais { list-style: none; text-align: center; padding: 8px; }
-@media (max-width: 700px) { .adm-filtros { grid-template-columns: minmax(0, 1fr); } }
-.adm-niveis { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.adm-meds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.adm-meds .ver-mais { text-align: center; padding: 8px; }
+.adm-med { display: flex; flex-direction: column; gap: 14px; background: var(--card); border: 1px solid var(--borda); border-radius: 16px; padding: 14px 16px; }
+.adm-med.inativo { opacity: .55; }
+.adm-med-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.adm-med-topo .interruptor { margin-left: auto; }
+.adm-niveis-img { display: flex; gap: 10px; flex-wrap: wrap; }
+.adm-img { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 92px; text-align: center; }
+.adm-img .med-slot { --tam: 72px; cursor: pointer; }
+.adm-img small { font-size: .7rem; color: var(--suave); line-height: 1.2; }
+.adm-img button { font-size: .72rem; padding: 2px 8px; }
+.adm-secretas { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.adm-secretas input { max-width: 260px; }
+.adm-eventos { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.adm-evento-med { display: flex; gap: 14px; background: var(--card); border: 1px solid var(--borda); border-radius: 16px; padding: 14px; }
+.adm-evento-med form { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+@media (max-width: 700px) { .med-grade { grid-template-columns: minmax(0, 1fr); } .perfil-medalhas { padding: 16px; } .adm-filtros { grid-template-columns: minmax(0, 1fr); } }

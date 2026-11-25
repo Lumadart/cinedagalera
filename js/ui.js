@@ -169,6 +169,7 @@ export function casca(rota, conteudo, { aoBuscar = null } = {}) {
         item('eventos', '#/eventos', 'Eventos'),
         item('sorteio', '#/sorteio', 'Sorteio'),
         item('amigos', '#/amigos', 'Amigos'),
+        item('medalhas', '#/medalhas', 'Medalhas'),
         item('adicionar', '#/adicionar', 'Adicionar'),
         m && m.admin ? item('admin', '#/admin', 'Admin') : null
       ),

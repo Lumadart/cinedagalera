@@ -21,6 +21,7 @@ function rotaAtual() {
   if (partes[0] === 'perfil' && /^[A-Za-z0-9_]+$/.test(partes[1] || '')) return { nome: 'perfil', id: partes[1] };
   if (partes[0] === 'perfil') return { nome: 'perfil', id: null };
   if (partes[0] === 'amigos') return { nome: 'amigos' };
+  if (partes[0] === 'medalhas') return { nome: 'medalhas' };
   if (partes[0] === 'catalogo') return { nome: 'catalogo' };
   if (partes[0] === 'adicionar') return { nome: 'adicionar' };
   if (partes[0] === 'eventos') return { nome: 'eventos' };
@@ -35,6 +36,7 @@ function rotaAtual() {
 const SOB_DEMANDA = {
   editar: () => import('./telas/editar-perfil.js').then((m) => m.telaEditarPerfil),
   amigos: () => import('./telas/amigos.js').then((m) => m.telaAmigos),
+  medalhas: () => import('./telas/medalhas.js').then((m) => m.telaMedalhas),
   admin: () => import('./telas/admin.js').then((m) => m.telaAdmin),
   eventos: () => import('./telas/eventos.js').then((m) => m.telaEventos),
   evento: () => import('./telas/evento.js').then((m) => m.telaEvento),
@@ -42,7 +44,7 @@ const SOB_DEMANDA = {
   adicionar: () => import('./telas/adicionar.js').then((m) => m.telaAdicionar)
 };
 const TELAS = { perfil: telaPerfil, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo };
-const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', evento: 'Evento', sorteio: 'Sorteio' };
+const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', medalhas: 'Medalhas', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', evento: 'Evento', sorteio: 'Sorteio' };
 
 async function rotear() {
   const rota = rotaAtual();

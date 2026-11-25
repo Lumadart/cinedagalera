@@ -1,7 +1,7 @@
 import { h, montar, icone } from '../dom.js';
 import { estado, carregarCatalogo } from '../estado.js';
 import { chamar } from '../api.js';
-import { painelMedalhas } from '../medalhas.js';
+import { slotMedalha } from '../medalhas.js';
 import { compatibilidade, ROTULO_PARTE } from '../compat.js';
 import { carregarEventos } from '../eventos.js';
 import { sair, casca, esqueleto, avatar, banner, capa, formatarNota } from '../ui.js';
@@ -19,7 +19,6 @@ export function telaPerfil({ raiz, ativa, params }) {
   const area = h('div', { class: 'perfil' }, esqueleto('lista', 4));
   const id = params.id || estado.membro.id;
   let aba = 'tudo', mostrando = PASSO, mostrandoAval = 6;
-  const uiMedalhas = {};                          // aba e filtro da tela de medalhas
   let conquistas = null, erroConquistas = '';     // medalhas: buscadas só quando a tela abre
   let proximos = null;                           // eventos em que a pessoa vai
   montar(raiz, casca('perfil', area));
@@ -111,9 +110,23 @@ export function telaPerfil({ raiz, ativa, params }) {
             h('div', { class: 'mini-favs' }, compat.naListaDeAmbos.slice(0, 6).map((t) => h('a', { href: '#/titulo/' + t.id, title: t.nome, 'aria-label': t.nome }, capa(t))))) : null
         ]) : null;
 
+    // Só as medalhas que a pessoa tem (a lista completa fica na página Medalhas).
+    const medalhasDaPessoa = (r) => {
+      const tem = r.medalhas.filter((b) => b.nivel > 0 && !b.oculta);
+      const grade = tem.length
+        ? h('div', { class: 'perfil-med-grade' }, tem.map((b) => {
+          const nome = b.tipo === 'trilha' ? b.niveis[b.nivel - 1].nome : b.nome;
+          return h('a', { class: 'perfil-med', href: '#/medalhas', title: b.tipo === 'trilha' ? `${b.nome} · nível ${b.nivel} de ${b.niveis.length}` : b.nome },
+            slotMedalha({ chave: b.chave, nivel: b.tipo === 'trilha' ? b.nivel : 1, imagens: r.imagens || {}, tem: true }),
+            h('strong', null, nome),
+            b.tipo === 'trilha' ? h('small', null, `${b.nome} · ${b.nivel}/${b.niveis.length}`) : b.tipo === 'disputada' ? h('small', null, 'disputada') : null);
+        }))
+        : h('p', { class: 'suave' }, meu ? 'Você ainda não ganhou nenhuma medalha. Marque o que assistiu, avalie e participe dos eventos.' : primeiro + ' ainda não ganhou medalhas.');
+      return [grade, h('div', { class: 'perfil-med-rodape' }, h('span', { class: 'suave pequeno' }, `${r.ganhas} de ${r.total} medalhas`), h('a', { class: 'btn-sec', href: '#/medalhas' }, 'Ver todas as medalhas'))];
+    };
     const blocoConquistas = h('section', { class: 'card perfil-medalhas' },
       h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Medalhas')),
-      conquistas ? painelMedalhas(conquistas, { meuId: estado.membro.id, primeiroNome: meu ? '' : primeiro, ui: uiMedalhas }) : erroConquistas ? h('p', { class: 'erro' }, erroConquistas) : esqueleto('lista', 1));
+      conquistas ? medalhasDaPessoa(conquistas) : erroConquistas ? h('p', { class: 'erro' }, erroConquistas) : esqueleto('lista', 1));
 
     const contaGenero = {};
     deles.filter((s) => s.status === 'visto' || s.status === 'assistindo').forEach((s) => porId[s.titulo_id].generos.forEach((g) => { contaGenero[g] = (contaGenero[g] || 0) + 1; }));

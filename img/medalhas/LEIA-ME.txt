@@ -1,0 +1,8 @@
+Imagens das medalhas (opcional; o jeito mais fácil é enviar pelo Admin > Medalhas, clicando no espaço de cada nível).
+
+Se preferir subir os arquivos aqui, o nome é: <código da medalha>-<nível>.png
+  Exemplo: titulos_vistos-1.png, titulos_vistos-2.png ... midia_filme-1.png, disputada: disp_filme-1.png
+  Medalhas sem níveis (únicas, disputadas, secretas, de evento) usam sempre -1.
+Tamanho: 512 x 512 px, PNG com fundo transparente.
+A imagem enviada pelo Admin tem prioridade sobre o arquivo desta pasta.
+A lista completa de nomes de arquivo está no documento "lista-de-imagens-das-medalhas.txt".
