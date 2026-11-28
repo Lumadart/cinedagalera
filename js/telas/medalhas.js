@@ -5,10 +5,10 @@ import { casca, esqueleto } from '../ui.js';
 import { slotMedalha, fmtNum, qtd, unidadeDisputa, valorDisputa } from '../medalhas.js';
 
 const SECOES = [
-  ['trilha', 'Trilhas', 'Cada trilha tem vários níveis: eles sobem conforme você assiste, avalia e participa.'],
+  ['trilha', 'Conquistas com níveis', 'Cada conquista tem vários níveis, com nomes divertidos: eles sobem conforme você assiste, avalia e participa.'],
   ['unica', 'Únicas', 'Ganhou, é sua para sempre.'],
   ['selo', 'Medalhas de eventos', 'Confirme presença e veja mais da metade da programação no dia do evento.'],
-  ['disputada', 'Disputadas', 'Só uma pessoa tem cada uma por vez. Quem supera o recorde toma a medalha.'],
+  ['disputada', 'Disputadas', 'Só uma pessoa tem cada uma por vez. Quem passa o recorde toma a medalha (nas de gênero e mídia, a disputa só começa com 5 títulos de vantagem).'],
   ['secreta', 'Secretas já descobertas', 'Alguém do grupo já ganhou. Falta você descobrir como.']
 ];
 
@@ -53,7 +53,7 @@ export function telaMedalhas({ raiz, ativa }) {
 
     montar(area,
       h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Medalhas'),
-        h('p', { class: 'suave' }, 'Todas as medalhas do grupo, com todos os níveis. As secretas só aparecem depois que alguém ganha.'))),
+        h('p', { class: 'suave' }, 'Todas as conquistas do grupo, com todos os níveis, e as medalhas disputadas.'))),
       h('div', { class: 'med-topo' },
         h('div', null, h('strong', { class: 'med-total' }, String(dados.ganhas)), h('span', { class: 'suave' }, ` de ${dados.total} medalhas são suas`)),
         h('div', { class: 'barra-badge med-barra', role: 'img', 'aria-label': `${pct}% das medalhas` }, h('span', { style: { width: Math.max(1, pct) + '%' } }))),
