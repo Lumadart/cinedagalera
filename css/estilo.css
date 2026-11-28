@@ -1462,14 +1462,13 @@ button.resp.salvando::after { margin-left: 6px; }
 .med-trilha-card { background: var(--card); border: 1px solid var(--borda); border-radius: 18px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
 .med-trilha-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; }
 .med-trilha-topo strong { font-size: 1.05rem; }
-.med-trilha-topo small { color: var(--suave); font-size: .82rem; }
+.med-trilha-topo small { color: var(--suave); font-size: .86rem; flex-basis: 100%; }
 .med-niveis { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; }
 .med-nivel { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 12px 8px; border-radius: 14px; background: var(--card2); border: 1px solid var(--borda); }
 .med-nivel.tem { border-color: #F5B94255; }
 .med-nivel .med-slot { --tam: 96px; }
 .med-nivel-num { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--suave); }
 .med-nivel strong { font-size: .9rem; line-height: 1.2; }
-.med-nivel:not(.tem) strong { color: var(--suave); }
 .med-nivel small { color: var(--suave); font-size: .76rem; line-height: 1.3; }
 .med-nivel .feito { color: var(--ouro); font-weight: 600; }
 
@@ -1477,7 +1476,6 @@ button.resp.salvando::after { margin-left: 6px; }
 .med-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
 .med-card { display: flex; gap: 16px; align-items: flex-start; background: var(--card); border: 1px solid var(--borda); border-radius: 18px; padding: 16px; }
 .med-card.tem { border-color: #F5B94255; }
-.med-card:not(.tem) .med-nome { color: var(--suave); }
 .med-texto { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .med-nome { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 1rem; line-height: 1.25; }
 .med-desc { color: var(--suave); font-size: .84rem; line-height: 1.4; }
@@ -1500,20 +1498,35 @@ button.resp.salvando::after { margin-left: 6px; }
 /* admin */
 .adm-filtros { display: grid; grid-template-columns: minmax(200px, 1fr) auto auto; gap: 10px; align-items: center; margin: 14px 0 8px; }
 .lista-adm .ver-mais { list-style: none; text-align: center; padding: 8px; }
-.adm-meds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.adm-meds .ver-mais { text-align: center; padding: 8px; }
-.adm-med { display: flex; flex-direction: column; gap: 14px; background: var(--card); border: 1px solid var(--borda); border-radius: 16px; padding: 14px 16px; }
-.adm-med.inativo { opacity: .55; }
-.adm-med-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
-.adm-med-topo .interruptor { margin-left: auto; }
-.adm-niveis-img { display: flex; gap: 10px; flex-wrap: wrap; }
-.adm-img { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 92px; text-align: center; }
-.adm-img .med-slot { --tam: 72px; cursor: pointer; }
-.adm-img small { font-size: .7rem; color: var(--suave); line-height: 1.2; }
-.adm-img button { font-size: .72rem; padding: 2px 8px; }
+.adm-corpo { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.adm-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.adm-vazio { padding: 18px 0; }
+.adm-linha { display: grid; grid-template-columns: minmax(220px, 1.1fr) minmax(0, 1.5fr) auto; align-items: center; gap: 10px 18px; min-height: 84px; padding: 10px 16px; background: var(--card); border: 1px solid var(--borda); border-radius: 14px; }
+.adm-linha.inativo { opacity: .55; }
+.adm-l-info { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.adm-l-nome { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.adm-l-nome strong { font-size: 1rem; }
+.adm-l-desc { margin: 0; color: var(--suave); font-size: .84rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.adm-l-imgs { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 6px 4px; min-width: 0; scrollbar-width: thin; }
+.adm-l-acoes { display: flex; align-items: center; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.adm-l-resumo { white-space: nowrap; }
+.adm-l-acoes .btn-sec.ligado { border-color: var(--ouro); color: var(--ouro); }
+.adm-img { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 56px; text-align: center; }
+.adm-img .med-slot { --tam: 52px; cursor: pointer; }
+.adm-img small { font-size: .7rem; color: var(--suave); line-height: 1; }
+.adm-img-x { position: absolute; top: -5px; right: -3px; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid var(--borda2); background: var(--fundo); color: var(--texto); font-size: .8rem; line-height: 1; cursor: pointer; }
+.adm-img-x:hover { background: #c0392b; border-color: #c0392b; }
+.adm-edicao, .adm-conceder { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px solid var(--borda); }
+.adm-edicao-topo { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr); gap: 12px; }
+.adm-edicao label { display: flex; flex-direction: column; gap: 4px; font-size: .82rem; color: var(--suave); }
+.adm-edicao textarea { resize: vertical; min-height: 58px; }
+.adm-edicao-niveis { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+@media (max-width: 1100px) { .adm-linha { grid-template-columns: minmax(0, 1fr) auto; } .adm-l-imgs { grid-column: 1 / -1; order: 3; } .adm-edicao-topo { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) { .adm-linha { grid-template-columns: minmax(0, 1fr); } .adm-l-acoes { justify-content: flex-start; } }
 .adm-secretas { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
 .adm-secretas input { max-width: 260px; }
 .adm-eventos { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
 .adm-evento-med { display: flex; gap: 14px; background: var(--card); border: 1px solid var(--borda); border-radius: 16px; padding: 14px; }
 .adm-evento-med form { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
 @media (max-width: 700px) { .med-grade { grid-template-columns: minmax(0, 1fr); } .perfil-medalhas { padding: 16px; } .adm-filtros { grid-template-columns: minmax(0, 1fr); } }
+.adm-abas { display: flex; overflow-x: auto; }

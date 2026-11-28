@@ -5,7 +5,7 @@ import { casca, esqueleto } from '../ui.js';
 import { slotMedalha, fmtNum, qtd, unidadeDisputa, valorDisputa } from '../medalhas.js';
 
 const SECOES = [
-  ['trilha', 'Conquistas com níveis', 'Cada conquista tem vários níveis,: eles sobem conforme você assiste, avalia e participa.'],
+  ['trilha', 'Conquistas com níveis', 'Cada conquista tem vários níveis, que sobem conforme o uso.'],
   ['unica', 'Únicas', 'Ganhou, é sua para sempre.'],
   ['selo', 'Conquistas de eventos', 'Confirme presença e veja mais da metade da programação no dia do evento.'],
   ['disputada', 'Disputadas', 'Só uma pessoa tem cada uma por vez. Quem passa o recorde toma a conquista (nas de gênero e mídia, a disputa só começa com 5 títulos de vantagem).'],
@@ -51,37 +51,30 @@ export function telaMedalhas({ raiz, ativa }) {
   }
 
   function cartaTrilha(b) {
-    const proximo = b.niveis[b.nivel];
     return h('article', { class: 'med-trilha-card' },
       h('div', { class: 'med-trilha-topo' },
         h('strong', null, b.nome),
-        h('small', null, `Você: ${qtd(b.valor, b.unidade)}` + (proximo ? ` · próximo nível em ${qtd(proximo.meta, b.unidade)}` : ' · último nível alcançado'))),
-      h('div', { class: 'med-niveis' }, b.niveis.map((n, i) => {
-        const tem = i < b.nivel;
-        return h('div', { class: 'med-nivel' + (tem ? ' tem' : '') },
-          slotMedalha({ chave: b.chave, nivel: i + 1, imagens: dados.imagens, tem }),
+        b.descricao ? h('small', null, b.descricao) : null),
+      h('div', { class: 'med-niveis' }, b.niveis.map((n, i) =>
+        h('div', { class: 'med-nivel' },
+          slotMedalha({ chave: b.chave, nivel: i + 1, imagens: dados.imagens, tem: true }),
           h('strong', { class: 'med-nivel-num' }, `Nível ${i + 1}`),
           h('small', null, qtd(n.meta, b.unidade)),
-          h('small', { class: tem ? 'feito' : '' }, tem ? 'Conquistado' : (n.quantos ? `${n.quantos} ${n.quantos === 1 ? 'pessoa' : 'pessoas'}` : 'Ninguém ainda')),
-          tem && n.quantos ? h('small', null, `${n.quantos} ${n.quantos === 1 ? 'pessoa' : 'pessoas'}`) : null);
-      })));
+          h('small', null, n.quantos ? `${n.quantos} ${n.quantos === 1 ? 'pessoa' : 'pessoas'}` : 'Ninguém ainda')))));
   }
 
   function cartaUnica(b) {
-    const eu = estado.membro && b.dono && b.dono.id === estado.membro.id;
     const dono = b.dono;
     const linhaDono = b.tipo !== 'disputada' ? null : (dono
-      ? h('div', { class: 'med-dono' }, eu ? h('b', null, 'Está com você agora') : h('span', null, 'Com ', h('a', { href: '#/perfil/' + dono.id }, dono.nome)),
+      ? h('div', { class: 'med-dono' }, h('span', null, 'Com ', h('a', { href: '#/perfil/' + dono.id }, dono.nome)),
         valorDisputa(b, dono.valor) ? h('small', null, ' · ' + valorDisputa(b, dono.valor)) : null)
-      : h('div', { class: 'med-dono' }, `Sem dono ainda. Mínimo para existir: ${fmtNum(b.minimo)}${b.medida === 'pole' ? '' : ' ' + unidadeDisputa(b)}.`));
-    return h('article', { class: 'med-card' + (b.nivel ? ' tem' : '') },
-      slotMedalha({ chave: b.chave, nivel: 1, imagens: dados.imagens, tem: b.nivel > 0 }),
+      : h('div', { class: 'med-dono' }, 'Sem dono ainda.'));
+    return h('article', { class: 'med-card' },
+      slotMedalha({ chave: b.chave, nivel: 1, imagens: dados.imagens, tem: true }),
       h('div', { class: 'med-texto' },
         h('strong', { class: 'med-nome' }, b.nome),
         h('p', { class: 'med-desc' }, b.descricao),
         linhaDono,
-        b.tipo === 'disputada' && !eu && b.meu_valor ? h('small', { class: 'med-quem' }, `Você: ${valorDisputa(b, b.meu_valor) || 'na disputa'}`) : null,
-        b.tipo !== 'disputada' ? h('span', { class: 'badge-estado' + (b.nivel ? ' ouro' : '') }, b.nivel ? 'Conquistada por você' : 'Ainda não conquistada') : null,
         b.tipo !== 'disputada' ? h('small', { class: 'med-quem' }, b.quantos ? `${b.quantos} ${b.quantos === 1 ? 'pessoa já ganhou' : 'pessoas já ganharam'}` : 'Ninguém ganhou ainda') : null));
   }
 }

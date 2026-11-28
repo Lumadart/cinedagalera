@@ -4,7 +4,7 @@ import { esqueleto, avisar } from '../../ui.js';
 import { slotMedalha, ROTULO_TIPO } from '../../medalhas.js';
 import { dropdown } from '../../dropdown.js';
 
-const TIPOS = [['todos', 'Todos os tipos'], ['trilha', 'Trilhas'], ['unica', 'Únicas'], ['disputada', 'Disputadas'], ['selo', 'De eventos'], ['secreta', 'Secretas']];
+const ABAS = [['trilha', 'Com níveis'], ['disputada', 'Disputadas'], ['selo', 'De eventos'], ['unica', 'Únicas'], ['secreta', 'Secretas']];
 let palavra = '';   // só na memória desta aba do navegador; nunca é guardada
 
 /** Reduz a imagem para no máximo 512 px mantendo a transparência (PNG). */
@@ -27,13 +27,15 @@ export async function abaConquistas({ painel, ativa }) {
   try { d = await chamar('admin_medalhas_painel', { palavra }); } catch (e) { if (ativa()) montar(painel, h('p', { class: 'erro' }, e.message)); return; }
   if (!ativa()) return;
   const recarregar = () => abaConquistas({ painel, ativa });
-  const filtro = { grupo: 'todos', tipo: 'todos', busca: '' };
+  const filtro = { aba: 'trilha', grupo: 'todos', busca: '' };
+  const abertos = new Map();   // chave -> 'editar' | 'conceder'
 
   /** Um espaço de imagem clicável: escolhe o arquivo, envia e atualiza. */
   function espacoImagem(b, nivel, rotulo) {
     const entrada = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', class: 'sr-only', tabindex: '-1' });
-    const slot = slotMedalha({ chave: b.chave, nivel, imagens: d.imagens, tamanho: 72, tem: true });
+    const slot = slotMedalha({ chave: b.chave, nivel, imagens: d.imagens, tamanho: 52, tem: true });
     const url = d.imagens[b.chave.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + nivel];
+    const nomeImg = rotulo ? `${b.nome}, nível ${rotulo}` : b.nome;
     entrada.addEventListener('change', async () => {
       const f = entrada.files[0]; entrada.value = '';
       if (!f) return;
@@ -44,14 +46,14 @@ export async function abaConquistas({ painel, ativa }) {
       } catch (e) { avisar(e.message, 'erro'); }
     });
     slot.addEventListener('click', () => entrada.click());
-    slot.setAttribute('role', 'button'); slot.tabIndex = 0; slot.setAttribute('aria-label', 'Enviar imagem: ' + rotulo);
+    slot.setAttribute('role', 'button'); slot.tabIndex = 0; slot.setAttribute('aria-label', 'Enviar imagem: ' + nomeImg);
     slot.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); entrada.click(); } });
     slot.removeAttribute('aria-hidden');
-    return h('div', { class: 'adm-img' }, slot, h('small', null, rotulo),
-      url ? h('button', { type: 'button', class: 'btn-sec perigo', onclick: async () => {
-        if (!confirm(`Remover a imagem de “${rotulo}”?`)) return;
+    return h('div', { class: 'adm-img', title: 'Clique para enviar a imagem' }, slot, rotulo ? h('small', null, rotulo) : null,
+      url ? h('button', { type: 'button', class: 'adm-img-x', 'aria-label': 'Remover imagem: ' + nomeImg, title: 'Remover imagem', onclick: async () => {
+        if (!confirm(`Remover a imagem de “${nomeImg}”?`)) return;
         try { await chamar('admin_medalha_imagem', { chave: b.chave, nivel, remover: true, palavra }); avisar('Imagem removida.'); recarregar(); } catch (e) { avisar(e.message, 'erro'); }
-      } }, 'Remover') : null, entrada);
+      } }, '×') : null, entrada);
   }
 
   // ---- conquistas de evento: criar, nomear e enviar a imagem quando o evento acontecer ----
@@ -66,7 +68,7 @@ export async function abaConquistas({ painel, ativa }) {
       } catch (er) { avisar(er.message, 'erro'); }
     };
     return h('article', { class: 'adm-evento-med' },
-      conquista ? espacoImagem(conquista, 1, 'Imagem') : slotMedalha({ chave: 'selo:' + e.id, nivel: 1, imagens: d.imagens, tamanho: 72 }),
+      conquista ? espacoImagem(conquista, 1, '') : slotMedalha({ chave: 'selo:' + e.id, nivel: 1, imagens: d.imagens, tamanho: 52 }),
       h('form', { onsubmit: (ev) => { ev.preventDefault(); salvar(false); } },
         h('strong', null, e.nome), h('small', { class: 'suave' }, new Date(e.inicio).toLocaleDateString('pt-BR') + (conquista ? ` · ${conquista.tem} ${conquista.tem === 1 ? 'pessoa ganhou' : 'pessoas ganharam'}` : '')),
         nome, desc,
@@ -75,86 +77,129 @@ export async function abaConquistas({ painel, ativa }) {
           e.selo_nome ? h('button', { type: 'button', class: 'btn-sec perigo', onclick: () => { if (confirm(`Remover a conquista “${e.selo_nome}”? Quem já a ganhou deixa de vê-la.`)) salvar(true); } }, 'Remover') : null)));
   }
 
-  // ---- cada conquista, com todos os níveis ----
-  function cartaoMedalha(b) {
-    const conceder = b.tipo !== 'disputada';
-    let sel, niv, aviso, aplicar;
-    if (conceder) {
-      sel = dropdown({ rotulo: 'Pessoa para ' + b.nome, mini: true, opcoes: d.membros.map((m) => [m.id, m.nome]) });
-      niv = dropdown({ rotulo: 'Nível de ' + b.nome, mini: true });
-      aviso = h('small', { class: 'suave' });
-      const pintar = () => {
-        const q = b.membros[sel.value] || { nivel: 0, concedida: false };
-        niv.definirOpcoes([['0', q.concedida ? 'Retirar concessão' : 'Escolha o nível'],
-          ...(b.niveis.length ? b.niveis.map((n, i) => [String(i + 1), n]) : [['1', 'Conceder']])]);
-        niv.value = q.concedida ? String(q.nivel) : '0';
-        aviso.textContent = q.nivel ? `Atual: ${b.niveis.length ? b.niveis[q.nivel - 1] : 'conquistada'}${q.concedida ? ' (concedida)' : ''}` : 'Ainda não tem';
-      };
-      sel.addEventListener('change', pintar); pintar();
-      aplicar = h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
-        aplicar.disabled = true;
-        try { await chamar('admin_medalha_conceder', { membro_id: sel.value, chave: b.chave, nivel: Number(niv.value) }); avisar('Conquista atualizada.'); recarregar(); }
-        catch (e) { avisar(e.message, 'erro'); aplicar.disabled = false; }
-      } }, 'Aplicar');
-    }
-    const interruptor = h('input', { type: 'checkbox', checked: b.ativa, 'aria-label': (b.ativa ? 'Desativar ' : 'Ativar ') + b.nome });
+  // ---- editar nome, descrição e nomes dos níveis ----
+  function painelEditar(b) {
+    const nome = h('input', { type: 'text', maxlength: 60, value: b.nome, placeholder: b.padrao.nome, 'aria-label': 'Nome da conquista' });
+    const desc = h('textarea', { rows: 2, maxlength: 200, 'aria-label': 'Descrição' }, b.descricao);
+    const niveis = b.padrao.niveis.map((_, i) => h('input', { type: 'text', maxlength: 40, value: b.niveis_nomes[i] || '', placeholder: `Nível ${i + 1}`, 'aria-label': `Nome do nível ${i + 1}` }));
+    const salvar = async (restaurar) => {
+      try {
+        await chamar('admin_medalha_textos', restaurar ? { chave: b.chave, restaurar: true } : { chave: b.chave, nome: nome.value, descricao: desc.value, niveis: niveis.map((x) => x.value) });
+        avisar(restaurar ? 'Voltou ao texto original.' : 'Texto salvo.'); abertos.delete(b.chave); recarregar();
+      } catch (e) { avisar(e.message, 'erro'); }
+    };
+    return h('form', { class: 'adm-edicao', onsubmit: (ev) => { ev.preventDefault(); salvar(false); } },
+      h('div', { class: 'adm-edicao-topo' },
+        h('label', null, 'Nome', nome),
+        h('label', { class: 'adm-edicao-desc' }, 'Descrição (o que a pessoa precisa fazer)', desc)),
+      niveis.length ? h('div', { class: 'adm-edicao-niveis' }, niveis.map((inp, i) =>
+        h('label', null, `Nível ${i + 1} · ${b.metas[i]} ${b.unidade}`, inp))) : null,
+      h('div', { class: 'acoes' },
+        h('button', { type: 'submit', class: 'btn-primario' }, 'Salvar'),
+        h('button', { type: 'button', class: 'btn-sec', onclick: () => { abertos.delete(b.chave); pintar(); } }, 'Cancelar'),
+        b.editado ? h('button', { type: 'button', class: 'btn-sec perigo', onclick: () => { if (confirm('Voltar nome, descrição e níveis ao texto original?')) salvar(true); } }, 'Voltar ao original') : null,
+        niveis.length ? h('small', { class: 'suave' }, 'Deixe um nível em branco para ele ficar só como “Nível N”.') : null));
+  }
+
+  // ---- conceder à mão ----
+  function painelConceder(b) {
+    const sel = dropdown({ rotulo: 'Pessoa para ' + b.nome, mini: true, opcoes: d.membros.map((m) => [m.id, m.nome]) });
+    const niv = dropdown({ rotulo: 'Nível de ' + b.nome, mini: true });
+    const aviso = h('small', { class: 'suave' });
+    const pintarNiv = () => {
+      const q = b.membros[sel.value] || { nivel: 0, concedida: false };
+      niv.definirOpcoes([['0', q.concedida ? 'Retirar concessão' : 'Escolha o nível'],
+        ...(b.niveis.length ? b.niveis.map((n, i) => [String(i + 1), n]) : [['1', 'Conceder']])]);
+      niv.value = q.concedida ? String(q.nivel) : '0';
+      aviso.textContent = q.nivel ? `Atual: ${b.niveis.length ? b.niveis[q.nivel - 1] : 'conquistada'}${q.concedida ? ' (concedida)' : ''}` : 'Ainda não tem';
+    };
+    sel.addEventListener('change', pintarNiv); pintarNiv();
+    const aplicar = h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
+      aplicar.disabled = true;
+      try { await chamar('admin_medalha_conceder', { membro_id: sel.value, chave: b.chave, nivel: Number(niv.value) }); avisar('Conquista atualizada.'); recarregar(); }
+      catch (e) { avisar(e.message, 'erro'); aplicar.disabled = false; }
+    } }, 'Aplicar');
+    return h('div', { class: 'adm-conceder' }, h('div', { class: 'conceder-linha' }, sel, niv, aplicar), aviso,
+      h('small', { class: 'suave' }, 'A concessão nunca rebaixa quem já ganhou pelo uso.'));
+  }
+
+  // ---- uma linha por conquista, sempre com a mesma altura; o que se edita abre embaixo ----
+  function linha(b) {
+    const aberto = abertos.get(b.chave);
+    const alterna = (modo) => { if (abertos.get(b.chave) === modo) abertos.delete(b.chave); else abertos.set(b.chave, modo); pintar(); };
+    const interruptor = h('input', { type: 'checkbox', checked: b.ativa, 'aria-label': 'Ativa: ' + b.nome });
     interruptor.addEventListener('change', async () => {
       try { await chamar('admin_medalha_ativar', { chave: b.chave, ativa: interruptor.checked }); avisar(interruptor.checked ? 'Conquista ativada.' : 'Conquista desativada: ninguém a vê.'); }
       catch (e) { avisar(e.message, 'erro'); interruptor.checked = !interruptor.checked; }
     });
     const resumo = b.tipo === 'disputada' ? (b.dono ? `Com ${b.dono}` : 'Sem dono ainda') : `${b.tem} ${b.tem === 1 ? 'pessoa tem' : 'pessoas têm'}`;
-    const niveis = b.niveis.length ? b.niveis : [b.nome];
-    return h('li', { class: 'adm-med' + (b.ativa ? '' : ' inativo') },
-      h('div', { class: 'adm-med-topo' }, h('strong', null, b.nome), h('span', { class: 'etiqueta cinza' }, b.grupo), h('span', { class: 'etiqueta' }, ROTULO_TIPO[b.tipo]),
-        h('span', { class: 'suave pequeno' }, resumo), h('label', { class: 'interruptor' }, interruptor, h('span', null, 'Ativa'))),
-      h('div', { class: 'adm-niveis-img' }, niveis.map((n, i) => espacoImagem(b, i + 1, b.niveis.length ? `${i + 1}. ${n}` : 'Imagem'))),
-      conceder ? h('div', { class: 'acoes adm-conceder' }, h('div', { class: 'conceder-linha' }, sel, niv, aplicar), aviso) : null);
+    const imgs = b.niveis.length ? b.niveis.map((n, i) => espacoImagem(b, i + 1, String(i + 1))) : [espacoImagem(b, 1, '')];
+    const editavel = b.tipo !== 'selo';
+    return h('li', { class: 'adm-linha' + (b.ativa ? '' : ' inativo') },
+      h('div', { class: 'adm-l-info' },
+        h('div', { class: 'adm-l-nome' }, h('strong', null, b.nome), h('span', { class: 'etiqueta cinza' }, b.grupo), b.editado ? h('span', { class: 'etiqueta' }, 'editada') : null),
+        h('p', { class: 'adm-l-desc', title: b.descricao }, b.descricao || 'Sem descrição.')),
+      h('div', { class: 'adm-l-imgs' }, imgs),
+      h('div', { class: 'adm-l-acoes' },
+        h('span', { class: 'suave pequeno adm-l-resumo' }, resumo),
+        editavel ? h('button', { type: 'button', class: 'btn-sec' + (aberto === 'editar' ? ' ligado' : ''), onclick: () => alterna('editar') }, 'Editar texto') : null,
+        b.tipo !== 'disputada' ? h('button', { type: 'button', class: 'btn-sec' + (aberto === 'conceder' ? ' ligado' : ''), onclick: () => alterna('conceder') }, 'Conceder') : null,
+        h('label', { class: 'interruptor' }, interruptor, h('span', null, 'Ativa'))),
+      aberto === 'editar' ? painelEditar(b) : aberto === 'conceder' ? painelConceder(b) : null);
   }
 
-  const lista = h('ul', { class: 'adm-meds' });
-  const contagem = h('p', { class: 'suave pequeno' });
-  const MAX = 30;
-  let mostrando = MAX;
+  const lista = h('ul', { class: 'adm-lista' });
   function pintar() {
     const q = filtro.busca.trim().toLowerCase();
-    const todas = d.medalhas.filter((b) => (filtro.grupo === 'todos' || b.grupo === filtro.grupo) && (filtro.tipo === 'todos' || b.tipo === filtro.tipo)
-      && (!q || b.nome.toLowerCase().includes(q) || b.niveis.some((n) => n.toLowerCase().includes(q))));
-    contagem.textContent = `${todas.length} ${todas.length === 1 ? 'medalha' : 'medalhas'}`;
-    montar(lista, todas.slice(0, mostrando).map(cartaoMedalha),
-      todas.length > mostrando ? h('li', { class: 'ver-mais' }, h('button', { type: 'button', class: 'btn-sec', onclick: () => { mostrando += MAX; pintar(); } }, `Mostrar mais (${todas.length - mostrando})`)) : null);
+    const todas = d.medalhas.filter((b) => b.tipo === filtro.aba && (filtro.grupo === 'todos' || b.grupo === filtro.grupo)
+      && (!q || b.nome.toLowerCase().includes(q) || (b.descricao || '').toLowerCase().includes(q) || b.niveis.some((n) => n.toLowerCase().includes(q))));
+    montar(lista, todas.length ? todas.map(linha) : h('li', { class: 'suave adm-vazio' }, 'Nenhuma conquista aqui.'));
   }
-  const grupo = dropdown({ rotulo: 'Grupo', mini: true, valor: 'todos', opcoes: [['todos', 'Todos os grupos'], ...d.grupos.filter((g) => d.secretas_liberadas || g !== 'Secretas').map((g) => [g, g])] });
-  const tipo = dropdown({ rotulo: 'Tipo', mini: true, valor: 'todos', opcoes: TIPOS.filter(([k]) => d.secretas_liberadas || k !== 'secreta') });
-  const busca = h('input', { type: 'search', placeholder: 'Buscar conquista ou nível…', 'aria-label': 'Buscar conquista' });
-  grupo.addEventListener('change', () => { filtro.grupo = grupo.value; mostrando = MAX; pintar(); });
-  tipo.addEventListener('change', () => { filtro.tipo = tipo.value; mostrando = MAX; pintar(); });
-  busca.addEventListener('input', () => { filtro.busca = busca.value; mostrando = MAX; pintar(); });
-  pintar();
+  const grupo = dropdown({ rotulo: 'Tema', mini: true, valor: 'todos', opcoes: [['todos', 'Todos os temas'], ...d.grupos.filter((g) => g !== 'Secretas').map((g) => [g, g])] });
+  const busca = h('input', { type: 'search', placeholder: 'Buscar conquista…', 'aria-label': 'Buscar conquista' });
+  grupo.addEventListener('change', () => { filtro.grupo = grupo.value; pintar(); });
+  busca.addEventListener('input', () => { filtro.busca = busca.value; pintar(); });
 
   const campoPalavra = h('input', { type: 'password', autocomplete: 'off', placeholder: 'Palavra-chave das secretas', 'aria-label': 'Palavra-chave das conquistas secretas', value: '' });
   const liberar = () => { palavra = campoPalavra.value.trim(); recarregar(); };
   campoPalavra.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); liberar(); } });
 
-  const eventosSemMedalha = d.eventos.filter((e) => !e.selo_nome);
-  const novoEvento = dropdown({ rotulo: 'Evento', mini: true, opcoes: eventosSemMedalha.length ? eventosSemMedalha.map((e) => [e.id, e.nome]) : [['', 'Todos os eventos já têm conquista']] });
+  const eventosSemConquista = d.eventos.filter((e) => !e.selo_nome);
+  const novoEvento = dropdown({ rotulo: 'Evento', mini: true, opcoes: eventosSemConquista.length ? eventosSemConquista.map((e) => [e.id, e.nome]) : [['', 'Todos os eventos já têm conquista']] });
 
-  montar(painel,
-    h('p', { class: 'suave' }, 'As conquistas são calculadas sozinhas e o que já foi ganho fica guardado. Aqui você envia a imagem de cada nível (clique no espaço), liga ou desliga uma conquista para todos e concede à mão. A concessão nunca rebaixa quem já ganhou pelo uso. As disputadas mudam de dono sozinhas.'),
-    h('section', { class: 'med-secao' },
-      h('div', { class: 'med-secao-topo' }, h('h3', null, 'Conquistas de eventos'), h('p', { class: 'suave pequeno' }, 'Dê nome a uma conquista só do evento e envie a imagem quando ele acontecer. Ganha quem confirmar presença e marcar como Visto, no dia, mais da metade dos títulos.')),
-      eventosSemMedalha.length ? h('div', { class: 'acoes' }, novoEvento, h('button', { type: 'button', class: 'btn-sec', onclick: () => {
-        const ev = d.eventos.find((x) => x.id === novoEvento.value);
-        if (!ev) return;
-        const nome = prompt(`Nome da conquista do evento “${ev.nome}”:`);
-        if (nome && nome.trim()) chamar('admin_evento_selo', { evento_id: ev.id, selo_nome: nome.trim(), selo_descricao: '' }).then(() => { avisar('Conquista criada.'); recarregar(); }).catch((e) => avisar(e.message, 'erro'));
-      } }, 'Criar conquista de evento')) : null,
-      d.eventos.some((e) => e.selo_nome) ? h('div', { class: 'adm-eventos' }, d.eventos.filter((e) => e.selo_nome).map(cartaoEvento)) : h('p', { class: 'suave pequeno' }, 'Nenhum evento tem conquista ainda.')),
-    h('section', { class: 'med-secao' },
-      h('div', { class: 'med-secao-topo' }, h('h3', null, 'Todas as conquistas')),
-      h('div', { class: 'adm-secretas' }, d.secretas_liberadas
-        ? h('span', { class: 'etiqueta' }, 'Secretas liberadas nesta sessão')
-        : [campoPalavra, h('button', { type: 'button', class: 'btn-sec', onclick: liberar }, 'Liberar secretas'),
-          d.palavra_errada ? h('small', { class: 'erro' }, 'Palavra-chave incorreta.') : h('small', { class: 'suave' }, 'As conquistas secretas só aparecem com a palavra-chave.')]),
-      h('div', { class: 'adm-filtros' }, busca, grupo, tipo),
-      contagem, lista));
+  const abasDisponiveis = ABAS.filter(([k]) => k === 'trilha' || k === 'disputada' || k === 'selo'
+    || (k === 'unica' && d.medalhas.some((b) => b.tipo === 'unica')) || (k === 'secreta' && d.tem_secretas));
+  const contar = (k) => (k === 'selo' ? d.eventos.filter((e) => e.selo_nome).length : d.medalhas.filter((b) => b.tipo === k).length);
+  const barra = h('div', { class: 'adm-abas abas-linha', role: 'tablist' }, abasDisponiveis.map(([k, r]) =>
+    h('button', { type: 'button', role: 'tab', class: 'aba' + (k === filtro.aba ? ' ligada' : ''), 'aria-selected': String(k === filtro.aba),
+      onclick: () => { filtro.aba = k; filtro.grupo = 'todos'; grupo.value = 'todos'; desenharAba(); } }, r, h('small', { class: 'med-contagem' }, String(contar(k))))));
+  const corpo = h('div', { class: 'adm-corpo' });
+
+  function desenharAba() {
+    barra.querySelectorAll('.aba').forEach((el, i) => { const ligada = abasDisponiveis[i][0] === filtro.aba; el.classList.toggle('ligada', ligada); el.setAttribute('aria-selected', String(ligada)); });
+    if (filtro.aba === 'selo') {
+      montar(corpo,
+        h('p', { class: 'suave pequeno' }, 'Dê nome a uma conquista só do evento e envie a imagem quando ele acontecer. Ganha quem confirmar presença e marcar como Visto, no dia, mais da metade dos títulos.'),
+        eventosSemConquista.length ? h('div', { class: 'acoes' }, novoEvento, h('button', { type: 'button', class: 'btn-sec', onclick: () => {
+          const ev = d.eventos.find((x) => x.id === novoEvento.value);
+          if (!ev) return;
+          const nome = prompt(`Nome da conquista do evento “${ev.nome}”:`);
+          if (nome && nome.trim()) chamar('admin_evento_selo', { evento_id: ev.id, selo_nome: nome.trim(), selo_descricao: '' }).then(() => { avisar('Conquista criada.'); recarregar(); }).catch((e) => avisar(e.message, 'erro'));
+        } }, 'Criar conquista de evento')) : null,
+        d.eventos.some((e) => e.selo_nome) ? h('div', { class: 'adm-eventos' }, d.eventos.filter((e) => e.selo_nome).map(cartaoEvento)) : h('p', { class: 'suave pequeno' }, 'Nenhum evento tem conquista ainda.'));
+      return;
+    }
+    const dicas = { trilha: 'Cada conquista tem níveis. Clique no espaço de um nível para enviar a imagem, ou em “Editar texto” para mudar nome, descrição e nomes dos níveis.',
+      disputada: 'Uma pessoa por vez. Elas mudam de dono sozinhas.', unica: 'Ganhou, é sua.', secreta: 'Só aparecem para o grupo depois que alguém ganha.' };
+    montar(corpo,
+      h('p', { class: 'suave pequeno' }, dicas[filtro.aba]),
+      filtro.aba === 'secreta' && !d.secretas_liberadas ? h('div', { class: 'adm-secretas' }, campoPalavra, h('button', { type: 'button', class: 'btn-sec', onclick: liberar }, 'Liberar secretas'),
+        d.palavra_errada ? h('small', { class: 'erro' }, 'Palavra-chave incorreta.') : h('small', { class: 'suave' }, 'As secretas só aparecem com a palavra-chave.')) : null,
+      h('div', { class: 'adm-filtros' }, busca, grupo),
+      lista);
+    pintar();
+  }
+  desenharAba();
+
+  montar(painel, barra, corpo);
 }
