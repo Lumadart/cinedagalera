@@ -3,7 +3,7 @@ import { estado, carregarCatalogo, achaTitulo } from '../estado.js';
 import { casca, esqueleto, avisar, capa } from '../ui.js';
 import { haQuanto, dataLonga, contagem, jaComecou } from '../datas.js';
 import { chamar } from '../api.js';
-import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, seloData, diaLongo, hhmm, TIPOS_EVENTO, faseRotulo } from '../eventos.js';
+import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, seloData, diaLongo, hhmm, textoFim, TIPOS_EVENTO, faseRotulo } from '../eventos.js';
 
 let filtro = 'proximos';   // lembrado enquanto o site estiver aberto
 
@@ -60,6 +60,7 @@ export function telaEventos({ raiz, ativa }) {
         h('h2', null, e.nome),
         e.descricao ? h('p', { class: 'suave ev-item-desc' }, e.descricao) : null,
         h('p', { class: 'ev-item-meta' }, icone('calendario', 16), diaLongo(e.inicio) + ' · ' + hhmm(e.inicio),
+          textoFim(e) ? h('span', { class: 'suave' }, ' · ' + textoFim(e)) : null,
           h('span', { class: 'suave' }, jaComecou(e) ? '' : ' · ' + contagem(e.inicio)),
           filmes ? h('span', { class: 'suave' }, ` · ${filmes} ${filmes === 1 ? 'filme' : 'filmes'}`) : null)),
       h('div', { class: 'ev-item-lado' },

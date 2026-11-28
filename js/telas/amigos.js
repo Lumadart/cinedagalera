@@ -39,7 +39,7 @@ export function telaAmigos({ raiz, ativa }) {
         const x = r.resumo[el.dataset.membro];
         if (!x) return;
         el.hidden = false; el.textContent = '';
-        el.append(h('b', null, String(x.conquistadas)), ' medalhas');
+        el.append(h('b', null, String(x.conquistadas)), ' conquistas');
       });
     }).catch(() => { /* sem conquistas por enquanto; o resto da tela segue normal */ });
   }

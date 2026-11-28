@@ -21,7 +21,7 @@ const GRUPOS = [
     ['aparencia', 'Aparência', 'estrela', 'Imagens de capa das páginas do site.', abaAparencia]]],
   ['Atividades', [
     ['eventos', 'Eventos', 'calendario', 'Crie eventos, acompanhe as fases e organize votações.', abaEventos],
-    ['conquistas', 'Medalhas', 'escudo', 'As 252 medalhas: ligar, desligar e conceder à mão.', abaConquistas]]],
+    ['conquistas', 'Conquistas', 'escudo', 'Ligar, desligar, conceder à mão e enviar as imagens das conquistas.', abaConquistas]]],
   ['Sistema', [['manutencao', 'Manutenção e histórico', 'chave', 'Rotinas de limpeza e o registro de tudo que os admins fizeram.', abaManutencao]]]
 ];
 const ABAS = GRUPOS.flatMap(([, itens]) => itens);

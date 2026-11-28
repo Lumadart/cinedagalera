@@ -44,7 +44,7 @@ const SOB_DEMANDA = {
   adicionar: () => import('./telas/adicionar.js').then((m) => m.telaAdicionar)
 };
 const TELAS = { perfil: telaPerfil, inicio: telaInicio, entrar: telaLogin, catalogo: telaCatalogo, titulo: telaTitulo };
-const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', medalhas: 'Medalhas', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', evento: 'Evento', sorteio: 'Sorteio' };
+const TITULOS = { perfil: 'Perfil', editar: 'Editar perfil', amigos: 'Amigos', medalhas: 'Conquistas', inicio: 'Início', entrar: 'Entrar', catalogo: 'Catálogo', titulo: 'Título', adicionar: 'Adicionar título', admin: 'Administração', eventos: 'Eventos', evento: 'Evento', sorteio: 'Sorteio' };
 
 async function rotear() {
   const rota = rotaAtual();

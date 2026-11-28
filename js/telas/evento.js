@@ -4,7 +4,7 @@ import { casca, esqueleto, avisar, capa, avatar, seguro, suave, fundoImg } from 
 import { jaComecou } from '../datas.js';
 import { buscaTitulos } from '../seletor.js';
 import { chamar } from '../api.js';
-import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, programacao, relogio, diaLongo, hhmm, TIPOS_EVENTO, FASES, passosDoEvento, programaPorDia, textoEpisodios } from '../eventos.js';
+import { carregarEventos, previaEventos, limparEventos, colagem, quemVai, programacao, relogio, diaLongo, hhmm, textoFim, TIPOS_EVENTO, FASES, passosDoEvento, programaPorDia, textoEpisodios } from '../eventos.js';
 
 /** Página de um evento: hero, abas (Filmes / Participantes), votação, programação e filmes já escolhidos. */
 export function telaEvento({ raiz, params, ativa }) {
@@ -126,6 +126,7 @@ export function telaEvento({ raiz, params, ativa }) {
           h('ul', { class: 'evp-dados' },
             h('li', null, icone('calendario', 20), diaLongo(e.inicio)),
             h('li', null, icone('relogio', 20), 'A partir das ' + hhmm(e.inicio)),
+            textoFim(e) ? h('li', null, icone('calendario', 20), textoFim(e).replace(/^./, (c) => c.toUpperCase())) : null,
             local ? h('li', null, icone('amigos', 20), local) : null),
           passou ? null : relogio(e.inicio, ativa)),
         h('aside', { class: 'evp-card' },

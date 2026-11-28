@@ -110,7 +110,7 @@ export function telaPerfil({ raiz, ativa, params }) {
             h('div', { class: 'mini-favs' }, compat.naListaDeAmbos.slice(0, 6).map((t) => h('a', { href: '#/titulo/' + t.id, title: t.nome, 'aria-label': t.nome }, capa(t))))) : null
         ]) : null;
 
-    // Só as medalhas que a pessoa tem (a lista completa fica na página Medalhas).
+    // Só as conquistas que a pessoa tem (a lista completa fica na página Conquistas).
     const medalhasDaPessoa = (r) => {
       const tem = r.medalhas.filter((b) => b.nivel > 0 && !b.oculta);
       const grade = tem.length
@@ -121,11 +121,11 @@ export function telaPerfil({ raiz, ativa, params }) {
             h('strong', null, nome),
             b.tipo === 'trilha' ? h('small', null, `${b.nome} · ${b.nivel}/${b.niveis.length}`) : b.tipo === 'disputada' ? h('small', null, 'disputada') : null);
         }))
-        : h('p', { class: 'suave' }, meu ? 'Você ainda não ganhou nenhuma medalha. Marque o que assistiu, avalie e participe dos eventos.' : primeiro + ' ainda não ganhou medalhas.');
-      return [grade, h('div', { class: 'perfil-med-rodape' }, h('span', { class: 'suave pequeno' }, `${r.ganhas} de ${r.total} medalhas`), h('a', { class: 'btn-sec', href: '#/medalhas' }, 'Ver todas as medalhas'))];
+        : h('p', { class: 'suave' }, meu ? 'Você ainda não ganhou nenhuma conquista. Marque o que assistiu, avalie e participe dos eventos.' : primeiro + ' ainda não ganhou conquistas.');
+      return [grade, h('div', { class: 'perfil-med-rodape' }, h('span', { class: 'suave pequeno' }, `${r.ganhas} de ${r.total} conquistas`), h('a', { class: 'btn-sec', href: '#/medalhas' }, 'Ver todas as conquistas'))];
     };
     const blocoConquistas = h('section', { class: 'card perfil-medalhas' },
-      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Medalhas')),
+      h('div', { class: 'titulo-secao' }, h('h2', null, h('span', { class: 'ico-ouro' }, icone('estrela', 20)), 'Conquistas')),
       conquistas ? medalhasDaPessoa(conquistas) : erroConquistas ? h('p', { class: 'erro' }, erroConquistas) : esqueleto('lista', 1));
 
     const contaGenero = {};

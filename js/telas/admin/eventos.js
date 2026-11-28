@@ -148,7 +148,7 @@ async function desenharEventos({ painel, ativa }) {
       h('h2', null, e ? 'Editar evento' : 'Novo evento'),
       h('label', null, 'Nome', campo.nome),
       h('div', { class: 'duas-colunas' }, h('label', null, 'Tipo', campo.tipo), h('label', null, 'Tema (opcional)', campo.tema)),
-      h('label', null, 'Medalha do evento (opcional)', campo.selo, h('small', { class: 'suave' }, 'Dá nome a uma medalha só deste evento. Ganha quem confirmar presença e marcar como Visto, no dia, mais da metade dos títulos.')),
+      h('label', null, 'Conquista do evento (opcional)', campo.selo, h('small', { class: 'suave' }, 'Dá nome a uma conquista só deste evento. Ganha quem confirmar presença e marcar como Visto, no dia, mais da metade dos títulos.')),
       h('div', null, h('span', { class: 'rotulo' }, 'Como será o evento?'), botoesModo),
       blocoInicio,
       blocoVotacao,

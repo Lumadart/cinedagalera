@@ -1,7 +1,7 @@
 import { h } from './dom.js';
 
 /**
- * Espaço da imagem de uma medalha (só a moldura; a arte entra depois).
+ * Espaço da imagem de uma conquista (só a moldura; a arte entra depois).
  * Procura a imagem enviada pelo Admin (mapa `imagens`, chave "<chave>_<nível>") e, se não houver,
  * o arquivo img/medalhas/<chave>-<nível>.png. Sem nenhuma das duas, fica o espaço vazio.
  */

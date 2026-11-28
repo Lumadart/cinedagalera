@@ -54,28 +54,28 @@ export async function abaConquistas({ painel, ativa }) {
       } }, 'Remover') : null, entrada);
   }
 
-  // ---- medalhas de evento: criar, nomear e enviar a imagem quando o evento acontecer ----
+  // ---- conquistas de evento: criar, nomear e enviar a imagem quando o evento acontecer ----
   function cartaoEvento(e) {
-    const medalha = d.medalhas.find((m) => m.chave === 'selo:' + e.id);
-    const nome = h('input', { type: 'text', maxlength: 60, value: e.selo_nome, placeholder: 'Nome da medalha. Ex.: Sobrevivente da Noite do Terror', 'aria-label': 'Nome da medalha de ' + e.nome });
-    const desc = h('input', { type: 'text', maxlength: 200, value: e.selo_descricao, placeholder: 'Descrição (opcional)', 'aria-label': 'Descrição da medalha de ' + e.nome });
+    const conquista = d.medalhas.find((m) => m.chave === 'selo:' + e.id);
+    const nome = h('input', { type: 'text', maxlength: 60, value: e.selo_nome, placeholder: 'Nome da conquista. Ex.: Sobrevivente da Noite do Terror', 'aria-label': 'Nome da conquista de ' + e.nome });
+    const desc = h('input', { type: 'text', maxlength: 200, value: e.selo_descricao, placeholder: 'Descrição (opcional)', 'aria-label': 'Descrição da conquista de ' + e.nome });
     const salvar = async (remover) => {
       try {
         await chamar('admin_evento_selo', { evento_id: e.id, selo_nome: remover ? '' : nome.value, selo_descricao: remover ? '' : desc.value });
-        avisar(remover ? 'Medalha do evento removida.' : 'Medalha do evento salva.'); recarregar();
+        avisar(remover ? 'Conquista do evento removida.' : 'Conquista do evento salva.'); recarregar();
       } catch (er) { avisar(er.message, 'erro'); }
     };
     return h('article', { class: 'adm-evento-med' },
-      medalha ? espacoImagem(medalha, 1, 'Imagem') : slotMedalha({ chave: 'selo:' + e.id, nivel: 1, imagens: d.imagens, tamanho: 72 }),
+      conquista ? espacoImagem(conquista, 1, 'Imagem') : slotMedalha({ chave: 'selo:' + e.id, nivel: 1, imagens: d.imagens, tamanho: 72 }),
       h('form', { onsubmit: (ev) => { ev.preventDefault(); salvar(false); } },
-        h('strong', null, e.nome), h('small', { class: 'suave' }, new Date(e.inicio).toLocaleDateString('pt-BR') + (medalha ? ` · ${medalha.tem} ${medalha.tem === 1 ? 'pessoa ganhou' : 'pessoas ganharam'}` : '')),
+        h('strong', null, e.nome), h('small', { class: 'suave' }, new Date(e.inicio).toLocaleDateString('pt-BR') + (conquista ? ` · ${conquista.tem} ${conquista.tem === 1 ? 'pessoa ganhou' : 'pessoas ganharam'}` : '')),
         nome, desc,
         h('div', { class: 'acoes' },
-          h('button', { type: 'submit', class: 'btn-sec' }, e.selo_nome ? 'Salvar' : 'Criar medalha'),
-          e.selo_nome ? h('button', { type: 'button', class: 'btn-sec perigo', onclick: () => { if (confirm(`Remover a medalha “${e.selo_nome}”? Quem já a ganhou deixa de vê-la.`)) salvar(true); } }, 'Remover') : null)));
+          h('button', { type: 'submit', class: 'btn-sec' }, e.selo_nome ? 'Salvar' : 'Criar conquista'),
+          e.selo_nome ? h('button', { type: 'button', class: 'btn-sec perigo', onclick: () => { if (confirm(`Remover a conquista “${e.selo_nome}”? Quem já a ganhou deixa de vê-la.`)) salvar(true); } }, 'Remover') : null)));
   }
 
-  // ---- cada medalha, com todos os níveis ----
+  // ---- cada conquista, com todos os níveis ----
   function cartaoMedalha(b) {
     const conceder = b.tipo !== 'disputada';
     let sel, niv, aviso, aplicar;
@@ -93,13 +93,13 @@ export async function abaConquistas({ painel, ativa }) {
       sel.addEventListener('change', pintar); pintar();
       aplicar = h('button', { type: 'button', class: 'btn-sec', onclick: async () => {
         aplicar.disabled = true;
-        try { await chamar('admin_medalha_conceder', { membro_id: sel.value, chave: b.chave, nivel: Number(niv.value) }); avisar('Medalha atualizada.'); recarregar(); }
+        try { await chamar('admin_medalha_conceder', { membro_id: sel.value, chave: b.chave, nivel: Number(niv.value) }); avisar('Conquista atualizada.'); recarregar(); }
         catch (e) { avisar(e.message, 'erro'); aplicar.disabled = false; }
       } }, 'Aplicar');
     }
     const interruptor = h('input', { type: 'checkbox', checked: b.ativa, 'aria-label': (b.ativa ? 'Desativar ' : 'Ativar ') + b.nome });
     interruptor.addEventListener('change', async () => {
-      try { await chamar('admin_medalha_ativar', { chave: b.chave, ativa: interruptor.checked }); avisar(interruptor.checked ? 'Medalha ativada.' : 'Medalha desativada: ninguém a vê.'); }
+      try { await chamar('admin_medalha_ativar', { chave: b.chave, ativa: interruptor.checked }); avisar(interruptor.checked ? 'Conquista ativada.' : 'Conquista desativada: ninguém a vê.'); }
       catch (e) { avisar(e.message, 'erro'); interruptor.checked = !interruptor.checked; }
     });
     const resumo = b.tipo === 'disputada' ? (b.dono ? `Com ${b.dono}` : 'Sem dono ainda') : `${b.tem} ${b.tem === 1 ? 'pessoa tem' : 'pessoas têm'}`;
@@ -125,36 +125,36 @@ export async function abaConquistas({ painel, ativa }) {
   }
   const grupo = dropdown({ rotulo: 'Grupo', mini: true, valor: 'todos', opcoes: [['todos', 'Todos os grupos'], ...d.grupos.filter((g) => d.secretas_liberadas || g !== 'Secretas').map((g) => [g, g])] });
   const tipo = dropdown({ rotulo: 'Tipo', mini: true, valor: 'todos', opcoes: TIPOS.filter(([k]) => d.secretas_liberadas || k !== 'secreta') });
-  const busca = h('input', { type: 'search', placeholder: 'Buscar medalha ou nível…', 'aria-label': 'Buscar medalha' });
+  const busca = h('input', { type: 'search', placeholder: 'Buscar conquista ou nível…', 'aria-label': 'Buscar conquista' });
   grupo.addEventListener('change', () => { filtro.grupo = grupo.value; mostrando = MAX; pintar(); });
   tipo.addEventListener('change', () => { filtro.tipo = tipo.value; mostrando = MAX; pintar(); });
   busca.addEventListener('input', () => { filtro.busca = busca.value; mostrando = MAX; pintar(); });
   pintar();
 
-  const campoPalavra = h('input', { type: 'password', autocomplete: 'off', placeholder: 'Palavra-chave das secretas', 'aria-label': 'Palavra-chave das medalhas secretas', value: '' });
+  const campoPalavra = h('input', { type: 'password', autocomplete: 'off', placeholder: 'Palavra-chave das secretas', 'aria-label': 'Palavra-chave das conquistas secretas', value: '' });
   const liberar = () => { palavra = campoPalavra.value.trim(); recarregar(); };
   campoPalavra.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); liberar(); } });
 
   const eventosSemMedalha = d.eventos.filter((e) => !e.selo_nome);
-  const novoEvento = dropdown({ rotulo: 'Evento', mini: true, opcoes: eventosSemMedalha.length ? eventosSemMedalha.map((e) => [e.id, e.nome]) : [['', 'Todos os eventos já têm medalha']] });
+  const novoEvento = dropdown({ rotulo: 'Evento', mini: true, opcoes: eventosSemMedalha.length ? eventosSemMedalha.map((e) => [e.id, e.nome]) : [['', 'Todos os eventos já têm conquista']] });
 
   montar(painel,
-    h('p', { class: 'suave' }, 'As medalhas são calculadas sozinhas e o que já foi ganho fica guardado. Aqui você envia a imagem de cada nível (clique no espaço), liga ou desliga uma medalha para todos e concede à mão. A concessão nunca rebaixa quem já ganhou pelo uso. As disputadas mudam de dono sozinhas.'),
+    h('p', { class: 'suave' }, 'As conquistas são calculadas sozinhas e o que já foi ganho fica guardado. Aqui você envia a imagem de cada nível (clique no espaço), liga ou desliga uma conquista para todos e concede à mão. A concessão nunca rebaixa quem já ganhou pelo uso. As disputadas mudam de dono sozinhas.'),
     h('section', { class: 'med-secao' },
-      h('div', { class: 'med-secao-topo' }, h('h3', null, 'Medalhas de eventos'), h('p', { class: 'suave pequeno' }, 'Dê nome a uma medalha só do evento e envie a imagem quando ele acontecer. Ganha quem confirmar presença e marcar como Visto, no dia, mais da metade dos títulos.')),
+      h('div', { class: 'med-secao-topo' }, h('h3', null, 'Conquistas de eventos'), h('p', { class: 'suave pequeno' }, 'Dê nome a uma conquista só do evento e envie a imagem quando ele acontecer. Ganha quem confirmar presença e marcar como Visto, no dia, mais da metade dos títulos.')),
       eventosSemMedalha.length ? h('div', { class: 'acoes' }, novoEvento, h('button', { type: 'button', class: 'btn-sec', onclick: () => {
         const ev = d.eventos.find((x) => x.id === novoEvento.value);
         if (!ev) return;
-        const nome = prompt(`Nome da medalha do evento “${ev.nome}”:`);
-        if (nome && nome.trim()) chamar('admin_evento_selo', { evento_id: ev.id, selo_nome: nome.trim(), selo_descricao: '' }).then(() => { avisar('Medalha criada.'); recarregar(); }).catch((e) => avisar(e.message, 'erro'));
-      } }, 'Criar medalha de evento')) : null,
-      d.eventos.some((e) => e.selo_nome) ? h('div', { class: 'adm-eventos' }, d.eventos.filter((e) => e.selo_nome).map(cartaoEvento)) : h('p', { class: 'suave pequeno' }, 'Nenhum evento tem medalha ainda.')),
+        const nome = prompt(`Nome da conquista do evento “${ev.nome}”:`);
+        if (nome && nome.trim()) chamar('admin_evento_selo', { evento_id: ev.id, selo_nome: nome.trim(), selo_descricao: '' }).then(() => { avisar('Conquista criada.'); recarregar(); }).catch((e) => avisar(e.message, 'erro'));
+      } }, 'Criar conquista de evento')) : null,
+      d.eventos.some((e) => e.selo_nome) ? h('div', { class: 'adm-eventos' }, d.eventos.filter((e) => e.selo_nome).map(cartaoEvento)) : h('p', { class: 'suave pequeno' }, 'Nenhum evento tem conquista ainda.')),
     h('section', { class: 'med-secao' },
-      h('div', { class: 'med-secao-topo' }, h('h3', null, 'Todas as medalhas')),
+      h('div', { class: 'med-secao-topo' }, h('h3', null, 'Todas as conquistas')),
       h('div', { class: 'adm-secretas' }, d.secretas_liberadas
         ? h('span', { class: 'etiqueta' }, 'Secretas liberadas nesta sessão')
         : [campoPalavra, h('button', { type: 'button', class: 'btn-sec', onclick: liberar }, 'Liberar secretas'),
-          d.palavra_errada ? h('small', { class: 'erro' }, 'Palavra-chave incorreta.') : h('small', { class: 'suave' }, 'As medalhas secretas só aparecem com a palavra-chave.')]),
+          d.palavra_errada ? h('small', { class: 'erro' }, 'Palavra-chave incorreta.') : h('small', { class: 'suave' }, 'As conquistas secretas só aparecem com a palavra-chave.')]),
       h('div', { class: 'adm-filtros' }, busca, grupo, tipo),
       contagem, lista));
 }

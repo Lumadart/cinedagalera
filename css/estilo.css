@@ -75,8 +75,8 @@ button:disabled { opacity: .6; cursor: default; }
 .barra-topo { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 28px; padding: 12px 32px; background: #231b20ee; backdrop-filter: blur(10px); border-bottom: 1px solid var(--borda); }
 .barra-topo .marca { font-size: 1.35rem; letter-spacing: .01em; white-space: nowrap; }
 .barra-topo .logo { width: 38px; height: 38px; }
-.nav { display: flex; align-items: center; gap: 4px; }
-.item { position: relative; padding: 10px 14px; border-radius: 10px; color: var(--suave); text-decoration: none; font-weight: 600; white-space: nowrap; }
+.nav { flex: 1 1 auto; display: flex; align-items: center; justify-content: space-evenly; gap: 4px; min-width: 0; }
+.item { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; color: var(--suave); text-decoration: none; font-weight: 600; white-space: nowrap; }
 .item:hover { color: var(--texto); background: var(--card); }
 .item[aria-current='page'] { color: var(--ouro); }
 .item[aria-current='page']::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 3px; border-radius: 3px; background: var(--ouro); }
@@ -280,7 +280,7 @@ button:disabled { opacity: .6; cursor: default; }
 @media (max-width: 1199px) {
   .inicio-corpo, .perfil-corpo, .editar-grade, .admin { grid-template-columns: minmax(0, 1fr); }
   .barra-topo { flex-wrap: wrap; gap: 8px 16px; }
-  .nav { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .nav { order: 3; width: 100%; flex: 1 1 100%; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
   .topo-busca { flex: 1 1 200px; }
 }
 @media (max-width: 899px) {

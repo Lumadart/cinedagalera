@@ -58,6 +58,14 @@ export function programacao(e) {
 
 /** "sábado, 24 de maio" e "14:00" (só o dia ou só a hora, ao contrário de dataLonga/horaCurta que trazem os dois). */
 export const diaLongo = (iso) => new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+/** Quando o evento acaba: o término informado ou, sem ele, o fim do último item da programação. ISO ou ''. */
+export function fimDoEvento(e) {
+  if (e && e.fim && !isNaN(new Date(e.fim))) return e.fim;
+  const fins = ((e && e.programacao && e.programacao.dias) || []).flatMap((d) => (d.itens || []).map((x) => x.fim)).filter((v) => v && !isNaN(new Date(v)));
+  return fins.length ? fins.reduce((a, b) => (new Date(b) > new Date(a) ? b : a)) : '';
+}
+/** "termina sábado, 29 de novembro · 23:00" (vazio se não dá para saber). */
+export const textoFim = (e) => { const f = fimDoEvento(e); return f ? 'termina ' + diaLongo(f) + ' · ' + hhmm(f) : ''; };
 export const hhmm = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
 /** Contagem regressiva ao vivo (dias, horas, minutos, segundos). Para sozinha quando a tela sai ou o evento começa. */

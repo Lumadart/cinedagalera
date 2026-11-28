@@ -157,21 +157,21 @@ function buscaTopo(aoBuscar) {
 
 /** A moldura de todas as telas internas: barra superior (marca, menu, busca, perfil) e rodapé. */
 export function casca(rota, conteudo, { aoBuscar = null } = {}) {
-  const item = (id, href, texto) => h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, texto);
+  const item = (id, href, texto, ico) => h('a', { class: 'item', href, 'aria-current': rota === id ? 'page' : null }, icone(ico, 18), h('span', null, texto));
   const m = estado.membro;
 
   return h('div', { class: 'casca' },
     h('header', { class: 'barra-topo' },
       h('a', { class: 'marca', href: '#/' }, marcaLogo(), h('span', null, NOME_DO_GRUPO)),
       h('nav', { class: 'nav', 'aria-label': 'Principal' },
-        item('inicio', '#/', 'Início'),
-        item('catalogo', '#/catalogo', 'Catálogo'),
-        item('eventos', '#/eventos', 'Eventos'),
-        item('sorteio', '#/sorteio', 'Sorteio'),
-        item('amigos', '#/amigos', 'Amigos'),
-        item('medalhas', '#/medalhas', 'Medalhas'),
-        item('adicionar', '#/adicionar', 'Adicionar'),
-        m && m.admin ? item('admin', '#/admin', 'Admin') : null
+        item('inicio', '#/', 'Início', 'inicio'),
+        item('catalogo', '#/catalogo', 'Catálogo', 'grade'),
+        item('eventos', '#/eventos', 'Eventos', 'calendario'),
+        item('sorteio', '#/sorteio', 'Sorteio', 'dado'),
+        item('amigos', '#/amigos', 'Amigos', 'amigos'),
+        item('medalhas', '#/medalhas', 'Conquistas', 'trofeu'),
+        item('adicionar', '#/adicionar', 'Adicionar', 'mais'),
+        m && m.admin ? item('admin', '#/admin', 'Admin', 'escudo') : null
       ),
       buscaTopo(aoBuscar),
       h('div', { class: 'usuario' },

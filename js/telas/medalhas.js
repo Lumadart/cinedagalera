@@ -5,15 +5,15 @@ import { casca, esqueleto } from '../ui.js';
 import { slotMedalha, fmtNum, qtd, unidadeDisputa, valorDisputa } from '../medalhas.js';
 
 const SECOES = [
-  ['trilha', 'Conquistas com níveis', 'Cada conquista tem vários níveis, com nomes divertidos: eles sobem conforme você assiste, avalia e participa.'],
+  ['trilha', 'Conquistas com níveis', 'Cada conquista tem vários níveis,: eles sobem conforme você assiste, avalia e participa.'],
   ['unica', 'Únicas', 'Ganhou, é sua para sempre.'],
-  ['selo', 'Medalhas de eventos', 'Confirme presença e veja mais da metade da programação no dia do evento.'],
-  ['disputada', 'Disputadas', 'Só uma pessoa tem cada uma por vez. Quem passa o recorde toma a medalha (nas de gênero e mídia, a disputa só começa com 5 títulos de vantagem).'],
+  ['selo', 'Conquistas de eventos', 'Confirme presença e veja mais da metade da programação no dia do evento.'],
+  ['disputada', 'Disputadas', 'Só uma pessoa tem cada uma por vez. Quem passa o recorde toma a conquista (nas de gênero e mídia, a disputa só começa com 5 títulos de vantagem).'],
   ['secreta', 'Secretas já descobertas', 'Alguém do grupo já ganhou. Falta você descobrir como.']
 ];
 
 let dados = null;                 // última resposta (a tela abre na hora e atualiza em seguida)
-const ui = { aba: null, filtro: 'todas' };
+const ui = { aba: null };
 
 export function telaMedalhas({ raiz, ativa }) {
   const area = h('div', { class: 'med-pagina' }, dados ? null : esqueleto('lista', 4));
@@ -26,22 +26,14 @@ export function telaMedalhas({ raiz, ativa }) {
     const lista = dados.medalhas;
     const grupos = dados.grupos.filter((g) => lista.some((b) => b.grupo === g));
     if (!grupos.includes(ui.aba)) ui.aba = grupos[0];
-    const ganhaDe = (b) => (b.tipo === 'trilha' ? b.nivel : (b.nivel > 0 ? 1 : 0));
-    const totalDe = (b) => (b.tipo === 'trilha' ? b.niveis.length : 1);
-    const pct = Math.round((dados.ganhas / dados.total) * 100);
-
+    
     const abas = h('div', { class: 'abas abas-linha', role: 'tablist' }, grupos.map((g) => {
       const doGrupo = lista.filter((b) => b.grupo === g);
       return h('button', { type: 'button', role: 'tab', class: 'aba' + (g === ui.aba ? ' ligada' : ''), 'aria-selected': String(g === ui.aba),
         onclick: () => { ui.aba = g; desenhar(); } }, g,
-      h('small', { class: 'med-contagem' }, `${doGrupo.reduce((a, b) => a + ganhaDe(b), 0)}/${doGrupo.reduce((a, b) => a + totalDe(b), 0)}`));
+      h('small', { class: 'med-contagem' }, String(doGrupo.length)));
     }));
-    const filtros = h('div', { class: 'med-filtros' }, [['todas', 'Todas'], ['ganhas', 'As que tenho'], ['faltam', 'As que faltam']].map(([k, r]) =>
-      h('button', { type: 'button', class: 'chip' + (ui.filtro === k ? ' ligado' : ''), 'aria-pressed': String(ui.filtro === k),
-        onclick: () => { ui.filtro = k; desenhar(); } }, r)));
-
-    const mostrar = (b) => ui.filtro === 'todas' || (ui.filtro === 'ganhas' ? ganhaDe(b) > 0 : ganhaDe(b) < totalDe(b));
-    const doGrupo = lista.filter((b) => b.grupo === ui.aba && mostrar(b));
+        const doGrupo = lista.filter((b) => b.grupo === ui.aba);
     const blocos = SECOES.map(([tipo, titulo, texto]) => {
       const itens = doGrupo.filter((b) => b.tipo === tipo);
       if (!itens.length) return null;
@@ -52,13 +44,10 @@ export function telaMedalhas({ raiz, ativa }) {
     }).filter(Boolean);
 
     montar(area,
-      h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Medalhas'),
-        h('p', { class: 'suave' }, 'Todas as conquistas do grupo, com todos os níveis, e as medalhas disputadas.'))),
-      h('div', { class: 'med-topo' },
-        h('div', null, h('strong', { class: 'med-total' }, String(dados.ganhas)), h('span', { class: 'suave' }, ` de ${dados.total} medalhas são suas`)),
-        h('div', { class: 'barra-badge med-barra', role: 'img', 'aria-label': `${pct}% das medalhas` }, h('span', { style: { width: Math.max(1, pct) + '%' } }))),
-      abas, filtros,
-      ...(blocos.length ? blocos : [h('p', { class: 'suave med-vazio' }, 'Nada por aqui com esse filtro.')]));
+      h('div', { class: 'titulo-linha' }, h('div', null, h('h1', null, 'Conquistas'),
+        h('p', { class: 'suave' }, 'A vitrine do grupo: todas as conquistas, com todos os níveis, tenha você ou não.'))),
+      abas,
+      ...(blocos.length ? blocos : [h('p', { class: 'suave med-vazio' }, 'Nada por aqui ainda.')]));
   }
 
   function cartaTrilha(b) {
@@ -71,8 +60,7 @@ export function telaMedalhas({ raiz, ativa }) {
         const tem = i < b.nivel;
         return h('div', { class: 'med-nivel' + (tem ? ' tem' : '') },
           slotMedalha({ chave: b.chave, nivel: i + 1, imagens: dados.imagens, tem }),
-          h('span', { class: 'med-nivel-num' }, `Nível ${i + 1}`),
-          h('strong', null, n.nome),
+          h('strong', { class: 'med-nivel-num' }, `Nível ${i + 1}`),
           h('small', null, qtd(n.meta, b.unidade)),
           h('small', { class: tem ? 'feito' : '' }, tem ? 'Conquistado' : (n.quantos ? `${n.quantos} ${n.quantos === 1 ? 'pessoa' : 'pessoas'}` : 'Ninguém ainda')),
           tem && n.quantos ? h('small', null, `${n.quantos} ${n.quantos === 1 ? 'pessoa' : 'pessoas'}`) : null);
